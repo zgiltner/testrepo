@@ -1,0 +1,90 @@
+name: hs-bomb-party
+version: 0.1.0.0
+github: githubuser/hs-bomb-party
+license: BSD-3-Clause
+author: Author name here
+maintainer: example@example.com
+copyright: 2024 Author name here
+
+extra-source-files:
+  - README.md
+  - CHANGELOG.md
+
+  # Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description: Please see the README on GitHub at <https://github.com/githubuser/hs-bomb-party#readme>
+
+dependencies:
+  - aeson
+  - async
+  - base >= 4.7 && < 5
+  - bytestring
+  - containers
+  - cookie
+  - http-types
+  - lucid
+  - lucid-htmx
+  - mtl
+  - nonempty-zipper
+  - rapid
+  - servant-auth
+  - servant-auth-server
+  - servant-lucid
+  - servant-server
+  - servant-websockets
+  - servant-htmx
+  - shakespeare
+  - text
+  - unordered-containers
+  - uuid
+  - wai
+  - wai-websockets
+  - warp
+  - websockets
+
+ghc-options:
+  - -Wall
+  - -Wcompat
+  - -Widentities
+  - -Wincomplete-record-updates
+  - -Wincomplete-uni-patterns
+  - -Wmissing-export-lists
+  - -Wmissing-home-modules
+  - -Wpartial-fields
+  - -Wredundant-constraints
+
+library:
+  source-dirs: src
+
+executables:
+  hs-bomb-party-exe:
+    main: Main.hs
+    source-dirs: app
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      - base
+      - hs-bomb-party
+
+tests:
+  hs-bomb-party-test:
+    main: Spec.hs
+    source-dirs: test
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+    dependencies:
+      - base
+      - hs-bomb-party
+      - hspec
+      - hspec-wai
+      - hspec-wai-json
+      - aeson
