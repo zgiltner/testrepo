@@ -26,6 +26,8 @@ dependencies:
   - bytestring
   - containers
   - cookie
+  - hashable
+  - http-api-data
   - http-types
   - lucid
   - lucid-htmx

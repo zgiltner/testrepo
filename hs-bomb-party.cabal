@@ -25,9 +25,11 @@ source-repository head
 
 library
   exposed-modules:
+      CircularZipper
       DevelMain
       Game
       Lib
+      UpperCase
       WithPlayerApi
   other-modules:
       Paths_hs_bomb_party
@@ -43,6 +45,8 @@ library
     , bytestring
     , containers
     , cookie
+    , hashable
+    , http-api-data
     , http-types
     , lucid
     , lucid-htmx
@@ -81,7 +85,9 @@ executable hs-bomb-party-exe
     , bytestring
     , containers
     , cookie
+    , hashable
     , hs-bomb-party
+    , http-api-data
     , http-types
     , lucid
     , lucid-htmx
@@ -121,10 +127,12 @@ test-suite hs-bomb-party-test
     , bytestring
     , containers
     , cookie
+    , hashable
     , hs-bomb-party
     , hspec
     , hspec-wai
     , hspec-wai-json
+    , http-api-data
     , http-types
     , lucid
     , lucid-htmx
