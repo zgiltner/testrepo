@@ -1,6 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
 module Game (
@@ -29,6 +30,7 @@ data GameState = GameState
     { players :: CircularZipper PlayerState
     , currentString :: UpperCase
     , alreadyUsedWords :: HashSet UpperCase
+    , validWords :: HashSet UpperCase
     }
 
 data PlayerState = PlayerState
@@ -84,6 +86,7 @@ isValidGuess :: GameState -> UpperCase -> Bool
 isValidGuess gs g =
     (T.isInfixOf `on` getUpperCase) gs.currentString g
         && not (g `HashSet.member` gs.alreadyUsedWords)
+        && (g `HashSet.member` gs.validWords)
 
 isPlayerTurn :: CircularZipper PlayerState -> PlayerState -> Bool
 isPlayerTurn z ps = (CZ.current z).id == ps.id
