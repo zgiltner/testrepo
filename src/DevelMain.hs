@@ -5,6 +5,7 @@
 
 module DevelMain (update) where
 
+import App (App (..))
 import Control.Concurrent (Chan, dupChan, newChan, readChan, writeChan)
 import Control.Concurrent.Async (race_)
 import Data.Text (Text)
@@ -28,7 +29,7 @@ update =
 
         restart r "webserver" $ do
             writeChan reloadChan ()
-            run 8080 $ app $ Just $ hotreloadJs "ws://localhost:8081"
+            run 8080 $ app App{} $ Just $ hotreloadJs "ws://localhost:8081"
 
 hotReloadServer :: Chan () -> Application
 hotReloadServer reloadChan = websocketsOr defaultConnectionOptions hotreloader backup
