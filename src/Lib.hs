@@ -21,17 +21,15 @@ import Data.HashSet (HashSet)
 import qualified Data.HashSet as HashSet
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Maybe (fromJust, fromMaybe)
-import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.UUID as UUID
 import GHC.Generics (Generic)
-import Game (GameState (..), Move (..), PlayerState (..), isGameOver, isPlayerAlive, isPlayerTurn, mkMove)
+import Game (GameState (..), Move (..), PlayerState (..), isGameOver, isPlayerAlive, isPlayerTurn, mkMove, tryGuess)
 import Lucid hiding (for_)
 import Lucid.Htmx
 import Servant
 import Servant.HTML.Lucid
 import UpperCase (UpperCase (..))
-import qualified UpperCase as UpperCase
 import Web.FormUrlEncoded (FromForm (..))
 import WithPlayerApi (PlayerId (..))
 import qualified WithPlayerApi
@@ -46,32 +44,62 @@ type API =
     Get '[HTML] (Html ())
         :<|> "gs" :> Capture "i" Int :> Get '[HTML] (Html ())
         :<|> "guess" :> ReqBody '[FormUrlEncoded] GuessPost :> Post '[HTML] (Html ())
+        :<|> "time-up" :> Post '[HTML] (Html ())
 
 api :: Proxy API
 api = Proxy
 
 server :: Maybe (Html ()) -> Server (WithPlayerApi.API API)
-server mHotReload = WithPlayerApi.withPlayerApi @API (allLinks (Proxy :: Proxy (Get '[HTML] (Html ())))) foo
+server mHotReload =
+    WithPlayerApi.withPlayerApi
+        @API
+        (allLinks (Proxy :: Proxy (Get '[HTML] (Html ()))))
+        foo
   where
     foo playerId =
         home mHotReload playerId (gs1, 0)
             :<|> ( \i ->
                     home mHotReload playerId (iterate (`mkMove` TimeUp) gs1 !! i, i)
                  )
-            :<|> (\g -> home mHotReload playerId (mkMove gs1 (Guess g.guess), 0))
+            :<|> guess mHotReload playerId gs1
+            :<|> home mHotReload playerId (gs1, 0)
 
 app :: Maybe (Html ()) -> Application
 app = serve (Proxy :: (Proxy (WithPlayerApi.API API))) . server
 
-home :: Maybe (Html ()) -> PlayerId -> (GameState, Int) -> Handler (Html ())
-home mHotreload playerId (gs, i) = pure $ html_ $ do
+sharedHead :: Maybe (Html ()) -> Html ()
+sharedHead mHotreload = do
     head_ $ do
         meta_ [charset_ "UTF-8"]
         meta_ [name_ "viewport_", content_ "width=device-width, initial-scale=1.0"]
         script_ [src_ "https://cdn.tailwindcss.com"] ("" :: String)
-        script_ [src_ "https://unpkg.com/htmx.org@1.9.10", integrity_ "sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC", crossorigin_ "anonymous"] ("" :: String)
+        script_
+            [ src_ "https://unpkg.com/htmx.org@1.9.10"
+            , integrity_ "sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC"
+            , crossorigin_ "anonymous"
+            ]
+            ("" :: String)
         title_ "Bombparty"
         sequenceA_ mHotreload
+
+guess :: Maybe (Html ()) -> PlayerId -> GameState -> GuessPost -> Handler (Html ())
+guess mHotreload playerId gs gp = do
+    let mGs = tryGuess gs gp.guess
+    pure $ html_ $ do
+        sharedHead mHotreload
+        body_ $
+            div_ [id_ "gameContainer"] $
+                do
+                    h1_ $ toHtml $ UUID.toText $ getPlayerId playerId
+                    div_
+                        [ class_ "container mx-auto px-4"
+                        ]
+                        $ gameStateUI playerId
+                        $ fromMaybe gs mGs
+
+home :: Maybe (Html ()) -> PlayerId -> (GameState, Int) -> Handler (Html ())
+home mHotreload playerId (gs, i) = pure $ html_ $ do
+    sharedHead mHotreload
     body_
         $ div_
             ( [ id_ "gameContainer"
@@ -102,22 +130,21 @@ playerStateUI pId gs ps = li_ [class_ $ "p-2 rounded-lg " <> bg <> " " <> outlin
     when (isPlayerAlive ps) $
         if isGameOver gs
             then h1_ "WINNER"
-            else
-                when (isPlayerAlive ps) $
-                    input_
-                        ( [ id_ $ "input-" <> UUID.toText (getPlayerId ps.id)
-                          , name_ "guess"
-                          , class_ $
-                                "border-2 "
-                                    <> if isActivePlayersTurn
-                                        then ""
-                                        else "bg-neutral-300"
-                          , hxPost_ "/guess"
-                          , hxTarget_ "#gameContainer"
-                          ]
-                            <> [disabled_ "" | not isActivePlayersTurn]
-                            <> [autofocus_ | isActivePlayersTurn]
-                        )
+            else when (isPlayerAlive ps) $ do
+                input_
+                    ( [ id_ $ "input-" <> UUID.toText (getPlayerId ps.id)
+                      , name_ "guess"
+                      , class_ $
+                            "border-2 "
+                                <> if isActivePlayersTurn
+                                    then ""
+                                    else "bg-neutral-200"
+                      , hxPost_ "/guess"
+                      , hxTarget_ "#gameContainer"
+                      ]
+                        <> [disabled_ "" | not isActivePlayersTurn]
+                        <> [autofocus_ | isActivePlayersTurn]
+                    )
   where
     isActivePlayersTurn = pId == ps.id && isPlayerTurn gs.players ps
     outline = if isPlayerTurn gs.players ps then "border-4 border-indigo-700" else "border-2"
@@ -134,7 +161,7 @@ playerFirst pId cz = CZ.current playerCurrent : CZ.rights playerCurrent <> CZ.le
     playerCurrent = fromMaybe cz $ CZ.findRight ((== pId) . (.id)) cz
 
 gs1 :: GameState
-gs1 = GameState (CZ.fromNonEmpty $ ps1 :| [ps2, ps3]) (UpperCase.fromText "FRI") mempty
+gs1 = GameState (CZ.fromNonEmpty $ ps1 :| [ps2, ps3]) "fri" mempty
 
 ps1 :: PlayerState
 ps1 = PlayerState (PlayerId $ fromJust $ UUID.fromString "87c1c582-29a8-47bd-991d-ed07cc4f1e38") mempty 2

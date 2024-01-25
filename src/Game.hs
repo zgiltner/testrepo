@@ -8,6 +8,7 @@ module Game (
     Move (..),
     PlayerState (..),
     mkMove,
+    tryGuess,
     isGameOver,
     isPlayerAlive,
     isPlayerTurn,
@@ -41,17 +42,21 @@ data Move = Guess UpperCase | TimeUp
 
 mkMove :: GameState -> Move -> GameState
 mkMove gs = \case
-    Guess g
-        | isValidGuess gs g ->
-            gs
-                { players = goToNextPlayer $ updateCurrent (validGuessForPlayer g) gs.players
-                , alreadyUsedWords = HashSet.insert g gs.alreadyUsedWords
-                }
-        | otherwise -> gs
+    Guess g -> fromMaybe gs $ tryGuess gs g
     TimeUp ->
         gs
             { players = goToNextPlayer $ updateCurrent timeUpForPlayer gs.players
             }
+
+tryGuess :: GameState -> UpperCase -> Maybe GameState
+tryGuess gs g
+    | isValidGuess gs g =
+        Just $
+            gs
+                { players = goToNextPlayer $ updateCurrent (validGuessForPlayer g) gs.players
+                , alreadyUsedWords = HashSet.insert g gs.alreadyUsedWords
+                }
+    | otherwise = Nothing
 
 validGuessForPlayer :: UpperCase -> PlayerState -> PlayerState
 validGuessForPlayer g ps =
