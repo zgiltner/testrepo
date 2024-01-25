@@ -160,8 +160,11 @@ playerFirst pId cz = CZ.current playerCurrent : CZ.rights playerCurrent <> CZ.le
   where
     playerCurrent = fromMaybe cz $ CZ.findRight ((== pId) . (.id)) cz
 
+wordList :: HashSet UpperCase
+wordList = HashSet.fromList ["the", "quick", "brown", "fox", "friday"]
+
 gs1 :: GameState
-gs1 = GameState (CZ.fromNonEmpty $ ps1 :| [ps2, ps3]) "fri" mempty
+gs1 = GameState (CZ.fromNonEmpty $ ps1 :| [ps2, ps3]) "fri" mempty wordList
 
 ps1 :: PlayerState
 ps1 = PlayerState (PlayerId $ fromJust $ UUID.fromString "169f6a54-19da-440d-abe6-e2d80d3a9d5b") mempty 2
