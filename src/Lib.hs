@@ -164,7 +164,7 @@ gs1 :: GameState
 gs1 = GameState (CZ.fromNonEmpty $ ps1 :| [ps2, ps3]) "fri" mempty
 
 ps1 :: PlayerState
-ps1 = PlayerState (PlayerId $ fromJust $ UUID.fromString "87c1c582-29a8-47bd-991d-ed07cc4f1e38") mempty 2
+ps1 = PlayerState (PlayerId $ fromJust $ UUID.fromString "169f6a54-19da-440d-abe6-e2d80d3a9d5b") mempty 2
 ps2 :: PlayerState
 ps2 = PlayerState (PlayerId $ fromJust $ UUID.fromString "550e8400-e29b-41d4-a716-446655440000") mempty 1
 ps3 :: PlayerState
