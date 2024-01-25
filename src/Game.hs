@@ -15,32 +15,31 @@ module Game (
     isPlayerTurn,
 ) where
 
+import CaseInsensitive (CaseInsensitiveChar, CaseInsensitiveText)
+import qualified CaseInsensitive
 import CircularZipper (CircularZipper (..), findRight, updateCurrent)
 import qualified CircularZipper as CZ
 import Data.Foldable (toList)
-import Data.Function (on)
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as HashSet
 import Data.Maybe (fromMaybe)
-import qualified Data.Text as T
-import UpperCase (UpperCase (..))
 import WithPlayerApi (PlayerId (..))
 
 data GameState = GameState
     { players :: CircularZipper PlayerState
-    , currentString :: UpperCase
-    , alreadyUsedWords :: HashSet UpperCase
-    , validWords :: HashSet UpperCase
+    , currentString :: CaseInsensitiveText
+    , alreadyUsedWords :: HashSet CaseInsensitiveText
+    , validWords :: HashSet CaseInsensitiveText
     }
 
 data PlayerState = PlayerState
     { id :: PlayerId
-    , letters :: HashSet Char
+    , letters :: HashSet CaseInsensitiveChar
     , lives :: Int
     }
     deriving (Show)
 
-data Move = Guess UpperCase | TimeUp
+data Move = Guess CaseInsensitiveText | TimeUp
 
 mkMove :: GameState -> Move -> GameState
 mkMove gs = \case
@@ -50,7 +49,7 @@ mkMove gs = \case
             { players = goToNextPlayer $ updateCurrent timeUpForPlayer gs.players
             }
 
-tryGuess :: GameState -> UpperCase -> Maybe GameState
+tryGuess :: GameState -> CaseInsensitiveText -> Maybe GameState
 tryGuess gs g
     | isValidGuess gs g =
         Just $
@@ -60,7 +59,7 @@ tryGuess gs g
                 }
     | otherwise = Nothing
 
-validGuessForPlayer :: UpperCase -> PlayerState -> PlayerState
+validGuessForPlayer :: CaseInsensitiveText -> PlayerState -> PlayerState
 validGuessForPlayer g ps =
     ps
         { lives = if hasAllLetters then ps.lives + 1 else ps.lives
@@ -68,7 +67,7 @@ validGuessForPlayer g ps =
         }
   where
     hasAllLetters = (== 26) $ HashSet.size letters
-    letters = T.foldr HashSet.insert ps.letters $ getUpperCase g
+    letters = HashSet.union ps.letters $ CaseInsensitive.caseInsensitiveLetters g
 
 timeUpForPlayer :: PlayerState -> PlayerState
 timeUpForPlayer ps = ps{lives = ps.lives - 1}
@@ -82,9 +81,9 @@ isGameOver gs = (== 1) $ length $ filter isPlayerAlive $ toList gs.players
 isPlayerAlive :: PlayerState -> Bool
 isPlayerAlive ps = ps.lives > 0
 
-isValidGuess :: GameState -> UpperCase -> Bool
+isValidGuess :: GameState -> CaseInsensitiveText -> Bool
 isValidGuess gs g =
-    (T.isInfixOf `on` getUpperCase) gs.currentString g
+    gs.currentString `CaseInsensitive.isInfixOf` g
         && not (g `HashSet.member` gs.alreadyUsedWords)
         && (g `HashSet.member` gs.validWords)
 

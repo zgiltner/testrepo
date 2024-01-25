@@ -14,6 +14,7 @@
 module Lib (app) where
 
 import App (App, AppM)
+import CaseInsensitive (CaseInsensitiveChar (..), CaseInsensitiveText)
 import CircularZipper (CircularZipper (..))
 import qualified CircularZipper as CZ
 import Control.Monad (replicateM_, unless, when)
@@ -31,13 +32,12 @@ import Lucid hiding (for_)
 import Lucid.Htmx
 import Servant
 import Servant.HTML.Lucid
-import UpperCase (UpperCase (..))
 import Web.FormUrlEncoded (FromForm (..))
 import WithPlayerApi (PlayerId (..))
 import qualified WithPlayerApi
 
 newtype GuessPost = GuessPost
-    { guess :: UpperCase
+    { guess :: CaseInsensitiveText
     }
     deriving stock (Generic)
     deriving anyclass (FromForm)
@@ -152,17 +152,17 @@ playerStateUI pId gs ps = li_ [class_ $ "p-2 rounded-lg " <> bg <> " " <> outlin
     outline = if isPlayerTurn gs.players ps then "border-4 border-indigo-700" else "border-2"
     bg = if isPlayerAlive ps then "" else "bg-neutral-300"
 
-letterUI :: HashSet Char -> Html ()
-letterUI ls = for_ ['A' .. 'Z'] $ \l -> do
+letterUI :: HashSet CaseInsensitiveChar -> Html ()
+letterUI ls = for_ [(CaseInsensitiveChar 'A') .. (CaseInsensitiveChar 'Z')] $ \l -> do
     let weight = if l `HashSet.member` ls then "font-extrabold" else "font-extralight"
-    span_ [class_ $ "tracking-widest " <> weight] $ toHtml [l]
+    span_ [class_ $ "tracking-widest " <> weight] $ toHtml l
 
 playerFirst :: PlayerId -> CircularZipper PlayerState -> [PlayerState]
 playerFirst pId cz = CZ.current playerCurrent : CZ.rights playerCurrent <> CZ.lefts playerCurrent
   where
     playerCurrent = fromMaybe cz $ CZ.findRight ((== pId) . (.id)) cz
 
-wordList :: HashSet UpperCase
+wordList :: HashSet CaseInsensitiveText
 wordList = HashSet.fromList ["the", "quick", "brown", "fox", "friday"]
 
 gs1 :: GameState
