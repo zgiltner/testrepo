@@ -41,6 +41,7 @@ dependencies:
   - servant-websockets
   - servant-htmx
   - shakespeare
+  - sqlite-simple
   - text
   - unordered-containers
   - uuid

@@ -61,6 +61,7 @@ library
     , servant-server
     , servant-websockets
     , shakespeare
+    , sqlite-simple
     , text
     , unordered-containers
     , uuid
@@ -102,6 +103,7 @@ executable hs-bomb-party-exe
     , servant-server
     , servant-websockets
     , shakespeare
+    , sqlite-simple
     , text
     , unordered-containers
     , uuid
@@ -147,6 +149,7 @@ test-suite hs-bomb-party-test
     , servant-server
     , servant-websockets
     , shakespeare
+    , sqlite-simple
     , text
     , unordered-containers
     , uuid
