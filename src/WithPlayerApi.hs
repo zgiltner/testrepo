@@ -6,11 +6,13 @@
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 
 module WithPlayerApi (PlayerId (..), API, api, loginApi, withPlayerApi) where
 
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Error.Class (MonadError)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import qualified Data.ByteString as BS
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -50,24 +52,26 @@ loginApi :: Proxy LoginAPI
 loginApi = Proxy
 
 withPlayerApi ::
-    forall a.
-    (ThrowAll (Server a)) =>
+    forall a m.
+    ( MonadIO m
+    , ThrowAll (ServerT a m)
+    , MonadError ServerError m
+    ) =>
     Link ->
-    (PlayerId -> Server a) ->
-    Server (API a)
+    (PlayerId -> ServerT a m) ->
+    ServerT (API a) m
 withPlayerApi afterLogin a mCookies = login :<|> aServer
   where
     aServer = case mPlayerId of
-        Nothing -> redirectTo (allLinks loginApi)
+        Nothing -> throwAll $ redirectErr $ allLinks loginApi
         Just playerId -> a playerId
     fixLocationHeader l = if T.null l then "/" else l
     fixLocationHeader' l = if BS.null l then "/" else l
-    redirectTo l =
-        throwAll $
-            err302
-                { errHeaders =
-                    ("Location", fixLocationHeader' $ toHeader l) : errHeaders err302
-                }
+    redirectErr l =
+        err302
+            { errHeaders =
+                ("Location", fixLocationHeader' $ toHeader l) : errHeaders err302
+            }
     playerCookieName = "X-PLAYER-ID"
     mPlayerId =
         fmap PlayerId . UUID.fromASCIIBytes
@@ -83,4 +87,4 @@ withPlayerApi afterLogin a mCookies = login :<|> aServer
                         , setCookieValue = encodeUtf8 $ UUID.toText newPlayerId
                         }
                 $ addHeader (fixLocationHeader $ toUrlPiece afterLogin) NoContent
-        Just _ -> redirectTo afterLogin
+        Just _ -> throwError $ redirectErr afterLogin

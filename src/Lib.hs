@@ -13,9 +13,12 @@
 
 module Lib (app) where
 
+import App (App, AppM)
+import CaseInsensitive (CaseInsensitiveChar (..), CaseInsensitiveText)
 import CircularZipper (CircularZipper (..))
 import qualified CircularZipper as CZ
 import Control.Monad (replicateM_, unless, when)
+import Control.Monad.Reader (ReaderT (..))
 import Data.Foldable (for_, sequenceA_, traverse_)
 import Data.HashSet (HashSet)
 import qualified Data.HashSet as HashSet
@@ -29,13 +32,12 @@ import Lucid hiding (for_)
 import Lucid.Htmx
 import Servant
 import Servant.HTML.Lucid
-import UpperCase (UpperCase (..))
 import Web.FormUrlEncoded (FromForm (..))
 import WithPlayerApi (PlayerId (..))
 import qualified WithPlayerApi
 
 newtype GuessPost = GuessPost
-    { guess :: UpperCase
+    { guess :: CaseInsensitiveText
     }
     deriving stock (Generic)
     deriving anyclass (FromForm)
@@ -49,12 +51,12 @@ type API =
 api :: Proxy API
 api = Proxy
 
-server :: Maybe (Html ()) -> Server (WithPlayerApi.API API)
-server mHotReload =
+server :: App -> Maybe (Html ()) -> Server (WithPlayerApi.API API)
+server app mHotReload =
     WithPlayerApi.withPlayerApi
         @API
         (allLinks (Proxy :: Proxy (Get '[HTML] (Html ()))))
-        foo
+        (hoistServer api (`runReaderT` app) . foo)
   where
     foo playerId =
         home mHotReload playerId (gs1, 0)
@@ -64,8 +66,8 @@ server mHotReload =
             :<|> guess mHotReload playerId gs1
             :<|> home mHotReload playerId (gs1, 0)
 
-app :: Maybe (Html ()) -> Application
-app = serve (Proxy :: (Proxy (WithPlayerApi.API API))) . server
+app :: App -> Maybe (Html ()) -> Application
+app app = serve (Proxy :: (Proxy (WithPlayerApi.API API))) . server app
 
 sharedHead :: Maybe (Html ()) -> Html ()
 sharedHead mHotreload = do
@@ -82,7 +84,7 @@ sharedHead mHotreload = do
         title_ "Bombparty"
         sequenceA_ mHotreload
 
-guess :: Maybe (Html ()) -> PlayerId -> GameState -> GuessPost -> Handler (Html ())
+guess :: Maybe (Html ()) -> PlayerId -> GameState -> GuessPost -> AppM (Html ())
 guess mHotreload playerId gs gp = do
     let mGs = tryGuess gs gp.guess
     pure $ html_ $ do
@@ -97,7 +99,7 @@ guess mHotreload playerId gs gp = do
                         $ gameStateUI playerId
                         $ fromMaybe gs mGs
 
-home :: Maybe (Html ()) -> PlayerId -> (GameState, Int) -> Handler (Html ())
+home :: Maybe (Html ()) -> PlayerId -> (GameState, Int) -> AppM (Html ())
 home mHotreload playerId (gs, i) = pure $ html_ $ do
     sharedHead mHotreload
     body_
@@ -150,17 +152,17 @@ playerStateUI pId gs ps = li_ [class_ $ "p-2 rounded-lg " <> bg <> " " <> outlin
     outline = if isPlayerTurn gs.players ps then "border-4 border-indigo-700" else "border-2"
     bg = if isPlayerAlive ps then "" else "bg-neutral-300"
 
-letterUI :: HashSet Char -> Html ()
-letterUI ls = for_ ['A' .. 'Z'] $ \l -> do
+letterUI :: HashSet CaseInsensitiveChar -> Html ()
+letterUI ls = for_ [(CaseInsensitiveChar 'A') .. (CaseInsensitiveChar 'Z')] $ \l -> do
     let weight = if l `HashSet.member` ls then "font-extrabold" else "font-extralight"
-    span_ [class_ $ "tracking-widest " <> weight] $ toHtml [l]
+    span_ [class_ $ "tracking-widest " <> weight] $ toHtml l
 
 playerFirst :: PlayerId -> CircularZipper PlayerState -> [PlayerState]
 playerFirst pId cz = CZ.current playerCurrent : CZ.rights playerCurrent <> CZ.lefts playerCurrent
   where
     playerCurrent = fromMaybe cz $ CZ.findRight ((== pId) . (.id)) cz
 
-wordList :: HashSet UpperCase
+wordList :: HashSet CaseInsensitiveText
 wordList = HashSet.fromList ["the", "quick", "brown", "fox", "friday"]
 
 gs1 :: GameState

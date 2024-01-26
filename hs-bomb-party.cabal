@@ -25,11 +25,12 @@ source-repository head
 
 library
   exposed-modules:
+      App
+      CaseInsensitive
       CircularZipper
       DevelMain
       Game
       Lib
-      UpperCase
       WithPlayerApi
   other-modules:
       Paths_hs_bomb_party
