@@ -1,35 +1,35 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
-module WithPlayerApi (PlayerId (..), API, api, loginApi, withPlayerApi) where
+module WithPlayerApi (PlayerId (..), API, withPlayerApi) where
 
 import Control.Monad.Error.Class (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import qualified Data.ByteString as BS
+import Data.Aeson (FromJSON)
+import Data.Coerce (coerce)
+import Data.Hashable (Hashable)
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Text.Encoding (encodeUtf8)
+import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.UUID (UUID)
 import qualified Data.UUID as UUID
 import Data.UUID.V4 (nextRandom)
+import Network.URI (parseURIReference)
+import qualified Network.Wai as Wai
 import Servant
-import Servant.Auth.Server (ThrowAll, throwAll)
 import Servant.HTML.Lucid
+import Servant.Server.Internal.Delayed (passToServer)
 import Web.Cookie (SetCookie (..), defaultSetCookie, parseCookies)
 
 newtype PlayerId = PlayerId {getPlayerId :: UUID}
     deriving stock (Eq, Show)
+    deriving newtype (Hashable, FromJSON)
 
 type API a =
-    Header "Cookie" Text
+    RequestURI
+        :> Header "Cookie" Text
+        :> QueryParam "referer" HttpApiDataURI
         :> (LoginAPI :<|> a)
 
 type LoginAPI =
@@ -40,43 +40,41 @@ type LoginAPI =
             '[HTML]
             ( Headers
                 '[ Header "Set-Cookie" SetCookie
-                 , Header "Location" Text
+                 , Header "Location" HttpApiDataURI
                  ]
                 NoContent
             )
 
-api :: Proxy (API a)
-api = Proxy
-
-loginApi :: Proxy LoginAPI
-loginApi = Proxy
-
 withPlayerApi ::
     forall a m.
     ( MonadIO m
-    , ThrowAll (ServerT a m)
-    , MonadError ServerError m
+    , PlayerIdRedirect (ServerT a m)
+    , PlayerIdRedirect (ServerT LoginAPI m)
     ) =>
-    Link ->
+    Proxy a ->
     (PlayerId -> ServerT a m) ->
     ServerT (API a) m
-withPlayerApi afterLogin a mCookies = login :<|> aServer
+withPlayerApi _ a reqURI mCookies mReferer = login :<|> aServer
   where
+    referer = Data.Maybe.fromMaybe (HttpApiDataURI $ URI mempty Nothing "/" "" "") mReferer
+    addRootSlash u = u{uriPath = "/" <> uriPath u}
+    loginURI =
+        safeLink'
+            (addRootSlash . linkURI)
+            (Proxy @(QueryParam "referer" HttpApiDataURI :> (LoginAPI :<|> a)))
+            (Proxy @(QueryParam "referer" HttpApiDataURI :> LoginAPI))
+            (Just $ HttpApiDataURI reqURI)
+    aServer :: ServerT a m
     aServer = case mPlayerId of
-        Nothing -> throwAll $ redirectErr $ allLinks loginApi
+        Nothing ->
+            redirect loginURI
         Just playerId -> a playerId
-    fixLocationHeader l = if T.null l then "/" else l
-    fixLocationHeader' l = if BS.null l then "/" else l
-    redirectErr l =
-        err302
-            { errHeaders =
-                ("Location", fixLocationHeader' $ toHeader l) : errHeaders err302
-            }
     playerCookieName = "X-PLAYER-ID"
     mPlayerId =
         fmap PlayerId . UUID.fromASCIIBytes
             =<< lookup playerCookieName . parseCookies . encodeUtf8
             =<< mCookies
+    login :: ServerT LoginAPI m
     login = case mPlayerId of
         Nothing -> do
             newPlayerId <- liftIO nextRandom
@@ -86,5 +84,49 @@ withPlayerApi afterLogin a mCookies = login :<|> aServer
                         { setCookieName = playerCookieName
                         , setCookieValue = encodeUtf8 $ UUID.toText newPlayerId
                         }
-                $ addHeader (fixLocationHeader $ toUrlPiece afterLogin) NoContent
-        Just _ -> throwError $ redirectErr afterLogin
+                $ addHeader referer NoContent
+        Just _ -> redirect $ getHttpApiDataURI referer
+
+-- | Similar to `ThrowAll` from `servant-auth`- allows redirecting across a sub-site
+class PlayerIdRedirect a where
+    redirect :: URI -> a
+
+instance (PlayerIdRedirect a, PlayerIdRedirect b) => PlayerIdRedirect (a :<|> b) where
+    redirect l = redirect l :<|> redirect l
+
+instance {-# OVERLAPPING #-} (PlayerIdRedirect b) => PlayerIdRedirect (a -> b) where
+    redirect l _ = redirect l
+
+instance {-# OVERLAPPABLE #-} (MonadError ServerError m) => PlayerIdRedirect (m a) where
+    redirect l =
+        throwError $
+            err302
+                { errHeaders =
+                    ("Location", encodeUtf8 $ T.pack $ show l) : errHeaders err302
+                }
+
+data RequestURI
+
+instance (HasServer api ctx) => HasServer (RequestURI :> api) ctx where
+    type ServerT (RequestURI :> api) m = URI -> ServerT api m
+
+    hoistServerWithContext _ pc nt s = hoistServerWithContext (Proxy @api) pc nt . s
+
+    route _ ctx d = route (Proxy @api) ctx $ passToServer d requestURI
+
+requestURI :: Wai.Request -> URI
+requestURI r =
+    URI
+        mempty
+        Nothing
+        (T.unpack $ decodeUtf8 $ Wai.rawPathInfo r)
+        (T.unpack $ decodeUtf8 $ Wai.rawQueryString r)
+        ""
+
+newtype HttpApiDataURI = HttpApiDataURI {getHttpApiDataURI :: URI}
+
+instance FromHttpApiData HttpApiDataURI where
+    parseQueryParam = coerce @(Text -> Either Text URI) $ maybe (Left "invalid uri") Right . parseURIReference . T.unpack
+
+instance ToHttpApiData HttpApiDataURI where
+    toQueryParam = coerce @(URI -> Text) $ T.pack . show

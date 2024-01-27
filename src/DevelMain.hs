@@ -1,23 +1,24 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TypeApplications #-}
 
 module DevelMain (update) where
 
 import App (App (..))
 import Control.Concurrent (Chan, dupChan, newChan, readChan, writeChan)
 import Control.Concurrent.Async (race_)
+import Control.Concurrent.STM (newTChan, newTChanIO, newTVarIO)
+import qualified Data.HashSet as HashSet
 import Data.Text (Text)
-import Lib (app)
+import Game (GameState (..), initialGameState)
+import GameServer (app)
 import Lucid (Html, script_, src_)
 import Network.HTTP.Types (status400)
 import Network.Wai (responseLBS)
 import Network.Wai.Handler.Warp (run)
 import Network.Wai.Handler.WebSockets (websocketsOr)
-import Network.WebSockets (ControlMessage (..), Message (..), acceptRequest, defaultConnectionOptions, receive, sendTextData)
+import Network.WebSockets (ControlMessage (..), Message (..), acceptRequest, defaultConnectionOptions, receive, sendTextData, withPingThread)
 import Rapid (createRef, rapid, restart, start)
 import Servant.Server
+import System.Random (mkStdGen)
 import Text.Shakespeare.Text (st)
 
 update :: IO ()
@@ -25,11 +26,23 @@ update =
     rapid 0 $ \r -> do
         reloadChan <- createRef @Text r "reloadChan" $ newChan @()
 
+        wsGameState <- createRef @Text r "wsGameState" $ do
+            let s =
+                    GameStateUnStarted $
+                        initialGameState
+                            (mkStdGen 0)
+                            (HashSet.fromList ["the", "quick", "brown", "fox", "friday"])
+                            ["fri", "day"]
+            chan <- newTChanIO
+            newTVarIO (s, chan)
+
+        wsGameStateTimer <- createRef @Text r "wsGameStateTimer" $ newTVarIO Nothing
+
         start r "hotreload" $ run 8081 $ hotReloadServer reloadChan
 
         restart r "webserver" $ do
             writeChan reloadChan ()
-            run 8080 $ app App{} $ Just $ hotreloadJs "ws://localhost:8081"
+            run 8080 $ app App{..} $ Just $ hotreloadJs "ws://localhost:8081"
 
 hotReloadServer :: Chan () -> Application
 hotReloadServer reloadChan = websocketsOr defaultConnectionOptions hotreloader backup
@@ -37,16 +50,17 @@ hotReloadServer reloadChan = websocketsOr defaultConnectionOptions hotreloader b
     hotreloader pc = do
         c <- acceptRequest pc
         myChan <- dupChan reloadChan
-        let
-            handleClose =
-                receive c >>= \case
-                    ControlMessage (Close _ _) -> pure ()
-                    _ -> handleClose
-            hotreload = do
-                _ <- readChan myChan
-                sendTextData @Text c "hotreload"
-                hotreload
-        race_ handleClose hotreload
+        withPingThread c 30 (pure ()) $ do
+            let
+                handleClose =
+                    receive c >>= \case
+                        ControlMessage (Close _ _) -> pure ()
+                        _ -> handleClose
+                hotreload = do
+                    _ <- readChan myChan
+                    sendTextData @Text c "hotreload"
+                    hotreload
+            race_ handleClose hotreload
     backup _ resp = resp $ responseLBS status400 [] "Not a WebSocket request"
 
 hotreloadJs :: Text -> Html ()

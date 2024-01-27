@@ -30,6 +30,7 @@ library
       CircularZipper
       DevelMain
       Game
+      GameServer
       Lib
       WithPlayerApi
   other-modules:
@@ -38,6 +39,43 @@ library
       Paths_hs_bomb_party
   hs-source-dirs:
       src
+  default-extensions:
+      OverloadedStrings
+      LambdaCase
+      GADTSyntax
+      RankNTypes
+      ScopedTypeVariables
+      DeriveGeneric
+      TupleSections
+      BangPatterns
+      MultiParamTypeClasses
+      FlexibleInstances
+      FlexibleContexts
+      MultiWayIf
+      TypeFamilies
+      TypeOperators
+      TypeApplications
+      FunctionalDependencies
+      DisambiguateRecordFields
+      MonadComprehensions
+      BinaryLiterals
+      RecursiveDo
+      ParallelListComp
+      PartialTypeSignatures
+      RecordWildCards
+      PatternSynonyms
+      EmptyCase
+      InstanceSigs
+      KindSignatures
+      DeriveFunctor
+      DeriveFoldable
+      DeriveTraversable
+      ConstraintKinds
+      ExplicitNamespaces
+      NamedFieldPuns
+      DerivingStrategies
+      GeneralizedNewtypeDeriving
+      DeriveAnyClass
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       aeson
@@ -52,15 +90,16 @@ library
     , lucid
     , lucid-htmx
     , mtl
+    , network-uri
     , nonempty-zipper
+    , random
     , rapid
-    , servant-auth
-    , servant-auth-server
     , servant-htmx
     , servant-lucid
     , servant-server
     , servant-websockets
     , shakespeare
+    , stm
     , text
     , unordered-containers
     , uuid
@@ -78,6 +117,43 @@ executable hs-bomb-party-exe
       Paths_hs_bomb_party
   hs-source-dirs:
       app
+  default-extensions:
+      OverloadedStrings
+      LambdaCase
+      GADTSyntax
+      RankNTypes
+      ScopedTypeVariables
+      DeriveGeneric
+      TupleSections
+      BangPatterns
+      MultiParamTypeClasses
+      FlexibleInstances
+      FlexibleContexts
+      MultiWayIf
+      TypeFamilies
+      TypeOperators
+      TypeApplications
+      FunctionalDependencies
+      DisambiguateRecordFields
+      MonadComprehensions
+      BinaryLiterals
+      RecursiveDo
+      ParallelListComp
+      PartialTypeSignatures
+      RecordWildCards
+      PatternSynonyms
+      EmptyCase
+      InstanceSigs
+      KindSignatures
+      DeriveFunctor
+      DeriveFoldable
+      DeriveTraversable
+      ConstraintKinds
+      ExplicitNamespaces
+      NamedFieldPuns
+      DerivingStrategies
+      GeneralizedNewtypeDeriving
+      DeriveAnyClass
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
@@ -93,15 +169,16 @@ executable hs-bomb-party-exe
     , lucid
     , lucid-htmx
     , mtl
+    , network-uri
     , nonempty-zipper
+    , random
     , rapid
-    , servant-auth
-    , servant-auth-server
     , servant-htmx
     , servant-lucid
     , servant-server
     , servant-websockets
     , shakespeare
+    , stm
     , text
     , unordered-containers
     , uuid
@@ -120,6 +197,43 @@ test-suite hs-bomb-party-test
       Paths_hs_bomb_party
   hs-source-dirs:
       test
+  default-extensions:
+      OverloadedStrings
+      LambdaCase
+      GADTSyntax
+      RankNTypes
+      ScopedTypeVariables
+      DeriveGeneric
+      TupleSections
+      BangPatterns
+      MultiParamTypeClasses
+      FlexibleInstances
+      FlexibleContexts
+      MultiWayIf
+      TypeFamilies
+      TypeOperators
+      TypeApplications
+      FunctionalDependencies
+      DisambiguateRecordFields
+      MonadComprehensions
+      BinaryLiterals
+      RecursiveDo
+      ParallelListComp
+      PartialTypeSignatures
+      RecordWildCards
+      PatternSynonyms
+      EmptyCase
+      InstanceSigs
+      KindSignatures
+      DeriveFunctor
+      DeriveFoldable
+      DeriveTraversable
+      ConstraintKinds
+      ExplicitNamespaces
+      NamedFieldPuns
+      DerivingStrategies
+      GeneralizedNewtypeDeriving
+      DeriveAnyClass
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
@@ -138,15 +252,16 @@ test-suite hs-bomb-party-test
     , lucid
     , lucid-htmx
     , mtl
+    , network-uri
     , nonempty-zipper
+    , random
     , rapid
-    , servant-auth
-    , servant-auth-server
     , servant-htmx
     , servant-lucid
     , servant-server
     , servant-websockets
     , shakespeare
+    , stm
     , text
     , unordered-containers
     , uuid

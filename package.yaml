@@ -32,15 +32,16 @@ dependencies:
   - lucid
   - lucid-htmx
   - mtl
+  - network-uri
   - nonempty-zipper
   - rapid
-  - servant-auth
-  - servant-auth-server
+  - random
   - servant-lucid
   - servant-server
   - servant-websockets
   - servant-htmx
   - shakespeare
+  - stm
   - text
   - unordered-containers
   - uuid
@@ -59,6 +60,44 @@ ghc-options:
   - -Wmissing-home-modules
   - -Wpartial-fields
   - -Wredundant-constraints
+
+default-extensions:
+  - OverloadedStrings
+  - LambdaCase
+  - GADTSyntax
+  - RankNTypes
+  - ScopedTypeVariables
+  - DeriveGeneric
+  - TupleSections
+  - BangPatterns
+  - MultiParamTypeClasses
+  - FlexibleInstances
+  - FlexibleContexts
+  - MultiWayIf
+  - TypeFamilies
+  - TypeOperators
+  - TypeApplications
+  - FunctionalDependencies
+  - DisambiguateRecordFields
+  - MonadComprehensions
+  - BinaryLiterals
+  - RecursiveDo
+  - ParallelListComp
+  - PartialTypeSignatures
+  - RecordWildCards
+  - PatternSynonyms
+  - EmptyCase
+  - InstanceSigs
+  - KindSignatures
+  - DeriveFunctor
+  - DeriveFoldable
+  - DeriveTraversable
+  - ConstraintKinds
+  - ExplicitNamespaces
+  - NamedFieldPuns
+  - DerivingStrategies
+  - GeneralizedNewtypeDeriving
+  - DeriveAnyClass
 
 library:
   source-dirs: src

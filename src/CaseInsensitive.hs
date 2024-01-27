@@ -1,10 +1,3 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
-
 module CaseInsensitive (CaseInsensitiveText, CaseInsensitiveChar (..), caseInsensitiveLetters, isInfixOf) where
 
 import qualified Data.Char as C
@@ -22,7 +15,7 @@ import Web.HttpApiData (FromHttpApiData)
 import Web.Internal.HttpApiData (FromHttpApiData (..))
 
 newtype CaseInsensitiveText = CaseInsensitiveText Text
-    deriving (Show)
+    deriving stock (Show, Generic)
     deriving newtype (IsString, ToHtml)
 
 instance Eq CaseInsensitiveText where
@@ -38,7 +31,7 @@ isInfixOf :: CaseInsensitiveText -> CaseInsensitiveText -> Bool
 isInfixOf = coerce (T.isInfixOf `on` T.toCaseFold)
 
 newtype CaseInsensitiveChar = CaseInsensitiveChar Char
-    deriving (Show, Generic)
+    deriving stock (Show, Generic)
     deriving newtype (Enum)
 
 instance Eq CaseInsensitiveChar where
