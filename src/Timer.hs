@@ -13,14 +13,14 @@ import Game (
     mkMove,
  )
 
-startTimer :: App -> IO ()
+startTimer :: (MonadUnliftIO m) => App -> m ()
 startTimer a = do
-    t <- liftIO $ async go
-    liftIO $ atomically $ writeTVar a.wsGameStateTimer $ Just t
+    t <- async go
+    atomically $ writeTVar a.wsGameStateTimer $ Just t
   where
     go = do
         threadDelay . gameStateMicrosecondsToGuess . fst =<< readTVarIO a.wsGameState
-        gs <- liftIO $ atomically $ do
+        gs <- atomically $ do
             (gs, chan) <- readTVar a.wsGameState
             case gs of
                 (GameStateStarted gss) -> do
@@ -34,8 +34,8 @@ startTimer a = do
                 _ -> True
         unless gameOver go
 
-stopTimer :: App -> IO ()
+stopTimer :: (MonadIO m) => App -> m ()
 stopTimer a = maybe (pure ()) cancel =<< readTVarIO a.wsGameStateTimer
 
-restartTimer :: App -> IO ()
+restartTimer :: (MonadUnliftIO m) => App -> m ()
 restartTimer a = stopTimer a >> startTimer a

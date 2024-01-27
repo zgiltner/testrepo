@@ -24,7 +24,7 @@ import Game (
     mkMove,
     startGame,
  )
-import Lucid hiding (for_)
+import Lucid
 import Lucid.Base (makeAttribute)
 import Lucid.Htmx
 import qualified Network.WebSockets as WS
@@ -206,4 +206,4 @@ ws api playerId c = do
                 Left gs -> gameStateUI api playerId gs
                 Right h -> h
             sender
-    race_ (pingThread 0) $ race_ listener sender
+    runConcurrently $ asum (Concurrently <$> [pingThread 0, listener, sender])
