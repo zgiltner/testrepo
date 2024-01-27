@@ -8,10 +8,7 @@ module Server (app) where
 import RIO
 
 import App (App (..), AppM)
-import Control.Exception (catch)
-import Control.Monad.Error.Class (catchError)
-import Control.Monad.Except (ExceptT (ExceptT))
-import Control.Monad.Reader (ReaderT (..), liftIO)
+import Control.Monad.Except (ExceptT (..))
 import qualified Handlers
 import Lucid hiding (for_)
 import OrphanInstances ()

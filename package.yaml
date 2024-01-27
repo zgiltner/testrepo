@@ -99,6 +99,7 @@ default-extensions:
   - DerivingStrategies
   - GeneralizedNewtypeDeriving
   - DeriveAnyClass
+  - NoImplicitPrelude
 
 library:
   source-dirs: src

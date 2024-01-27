@@ -2,12 +2,10 @@
 
 module DevelMain (update) where
 
+import RIO
+
 import App (App (..))
-import Control.Concurrent (Chan, dupChan, newChan, readChan, writeChan)
-import Control.Concurrent.Async (race_)
-import Control.Concurrent.STM (newTChanIO, newTVarIO)
 import qualified Data.HashSet as HashSet
-import Data.Text (Text)
 import Game (GameState (..), initialGameState)
 import Lucid (Html, script_, src_)
 import Network.HTTP.Types (status400)
@@ -24,12 +22,12 @@ import Text.Shakespeare.Text (st)
 update :: IO ()
 update =
     rapid 0 $ \r -> do
-        reloadChan <- createRef @Text r "reloadChan" $ newChan @()
+        reloadChan <- createRef @Text r "reloadChan" newChan
 
         wsGameState <- createRef @Text r "wsGameState" $ do
             let s =
-                    GameStateUnStarted $
-                        initialGameState
+                    GameStateUnStarted
+                        $ initialGameState
                             (mkStdGen 0)
                             (HashSet.fromList ["the", "quick", "brown", "fox", "friday"])
                             ["fri", "day"]

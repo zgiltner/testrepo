@@ -5,21 +5,15 @@
 
 module Handlers where
 
+import RIO
+
 import App (App (..), AppM)
 import CaseInsensitive (CaseInsensitiveText)
 import CircularZipper (CircularZipper (..))
 import qualified CircularZipper as CZ
-import Control.Concurrent.Async (race_)
-import Control.Concurrent.STM (atomically, dupTChan, readTChan, readTVar, readTVarIO, writeTChan, writeTVar)
-import Control.Monad (when)
-import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Reader (ask)
-import Data.Aeson (FromJSON, decode)
-import Data.Foldable (toList)
+import Data.Aeson (FromJSON, eitherDecode)
 import qualified Data.HashSet as HashSet
-import Data.Text (Text)
 import qualified Data.Text.Lazy as TL
-import GHC.Generics (Generic)
 import Game (
     GameState (..),
     Move (..),
@@ -89,8 +83,8 @@ join ::
     PlayerId ->
     AppM (Html ())
 join api playerId = do
-    gs <- updateGameState $
-        \case
+    gs <- updateGameState
+        $ \case
             GameStateUnStarted uGs -> GameStateUnStarted uGs{players = HashSet.insert playerId uGs.players}
             x -> x
     pure $ gameStateUI api playerId gs
@@ -102,8 +96,8 @@ leave ::
     PlayerId ->
     AppM (Html ())
 leave api playerId = do
-    gs <- updateGameState $
-        \case
+    gs <- updateGameState
+        $ \case
             GameStateUnStarted uGs -> GameStateUnStarted uGs{players = HashSet.delete playerId uGs.players}
             x -> x
     pure $ gameStateUI api playerId gs
@@ -188,21 +182,28 @@ ws api playerId c = do
     myChan <- liftIO $ atomically $ do
         (_, chan) <- readTVar a.wsGameState
         dupTChan chan
-    liftIO $ WS.withPingThread c 30 (pure ()) $ do
-        let
-            listener =
-                WS.receive c >>= \case
-                    WS.ControlMessage (WS.Close _ _) -> do
-                        pure ()
-                    WS.DataMessage _ _ _ (WS.Text msgString _) -> do
-                        let Just msg = decode @WsMsg msgString
-                        atomically $ writeTChan myChan $ Right $ guessInput msg.guess False False playerId
-                        listener
-                    _ -> listener
-            sender = do
-                msg <- atomically $ readTChan myChan
-                WS.sendTextData @Text c $ TL.toStrict $ renderText $ case msg of
-                    Left gs -> gameStateUI api playerId gs
-                    Right h -> h
-                sender
-        race_ listener sender
+    let
+        pingThread :: Int -> AppM ()
+        pingThread i = do
+            threadDelay 30000000
+            liftIO $ WS.sendPing c $ tshow i
+            pingThread $ i + 1
+        listener :: AppM ()
+        listener =
+            liftIO (WS.receive c) >>= \case
+                WS.ControlMessage (WS.Close _ _) -> pure ()
+                WS.DataMessage _ _ _ (WS.Text msgString _) -> do
+                    case eitherDecode @WsMsg msgString of
+                        Left err -> logError $ "WebSocket received bad json: " <> fromString err
+                        Right msg -> do
+                            atomically $ writeTChan myChan $ Right $ guessInput msg.guess False False playerId
+                    listener
+                _ -> listener
+        sender :: AppM ()
+        sender = do
+            msg <- atomically $ readTChan myChan
+            liftIO $ WS.sendTextData @Text c $ TL.toStrict $ renderText $ case msg of
+                Left gs -> gameStateUI api playerId gs
+                Right h -> h
+            sender
+    race_ (pingThread 0) $ race_ listener sender

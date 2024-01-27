@@ -10,11 +10,11 @@ module CircularZipper (
     findRight,
 ) where
 
+import RIO hiding (lefts, rights)
+
 import Data.Coerce (coerce)
-import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty.Zipper (Zipper)
 import qualified Data.List.NonEmpty.Zipper as Z
-import Data.Maybe (fromMaybe)
 
 -- | Zipper that ties the end back to the beginning
 newtype CircularZipper a = CircularZipper {getCircularZipper :: Zipper a}

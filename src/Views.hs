@@ -3,16 +3,11 @@
 
 module Views where
 
+import RIO
+
 import CaseInsensitive (CaseInsensitiveChar (..))
 import CircularZipper (CircularZipper (..))
 import qualified CircularZipper as CZ
-import Control.Monad (replicateM_, unless, when)
-import Data.Foldable (for_, sequenceA_, traverse_)
-import Data.HashSet (HashSet)
-import qualified Data.HashSet as HashSet
-import Data.Maybe (fromMaybe)
-import Data.Text (Text)
-import qualified Data.Text as T
 import qualified Data.UUID as UUID
 import Game (
     GameState (..),
@@ -27,6 +22,8 @@ import Lucid hiding (for_)
 import Lucid.Base (makeAttribute)
 import Lucid.Htmx
 import Lucid.Htmx.Servant (hxPostSafe_)
+import qualified RIO.HashSet as HashSet
+import qualified RIO.Text as T
 import Servant
 import Servant.HTML.Lucid
 import WithPlayerApi (PlayerId (..))
@@ -79,8 +76,8 @@ gameStateUI api playerId gs = div_ [id_ "gameState"] $ do
                         ]
                         "Join Game"
             ul_ $ for_ uGs.players $ \(PlayerId i) -> li_ $ toHtml $ T.pack $ show i
-            unless (null uGs.players) $
-                button_
+            unless (null uGs.players)
+                $ button_
                     [ type_ "button"
                     , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-green-500 text-white hover:bg-green-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
                     , hxPostSafe_ $ safeLink api (Proxy @("start" :> Post '[HTML] (Html ())))
@@ -142,11 +139,11 @@ guessInput v isMe isMyTurn playerId = do
     input_
         ( [ id_ $ playerInputId isMe playerId
           , name_ "guess"
-          , class_ $
-                "border-2 "
-                    <> if isActivePlayersTurn
-                        then ""
-                        else "bg-neutral-200"
+          , class_
+                $ "border-2 "
+                <> if isActivePlayersTurn
+                    then ""
+                    else "bg-neutral-200"
           , value_ v
           , autocomplete_ "off"
           ]

@@ -19,15 +19,14 @@ module Game (
     gameStateMicrosecondsToGuess,
 ) where
 
+import RIO
+
 import CaseInsensitive (CaseInsensitiveChar (..), CaseInsensitiveText)
 import qualified CaseInsensitive
 import CircularZipper (CircularZipper (..), findRight, updateCurrent)
 import qualified CircularZipper as CZ
-import Data.Foldable (toList)
-import Data.HashSet (HashSet)
-import qualified Data.HashSet as HashSet
-import Data.List.NonEmpty (NonEmpty (..))
-import Data.Maybe (fromMaybe)
+import qualified RIO.HashSet as HashSet
+import RIO.List.Partial ((!!))
 import System.Random (StdGen, randomR)
 import WithPlayerApi (PlayerId (..))
 
@@ -82,8 +81,8 @@ startGame uGs@UnStartedGameState{..} = case toList players of
         let
             (givenLetters, stdGen') = randomGivenLetters stdGen givenLettersSet
          in
-            GameStateStarted $
-                StartedGameState
+            GameStateStarted
+                $ StartedGameState
                     { alreadyUsedWords = mempty
                     , stdGen = stdGen'
                     , players = CZ.fromNonEmpty $ fmap initialPlayerState $ p :| ps
@@ -96,8 +95,8 @@ mkMove :: StartedGameState -> Move -> StartedGameState
 mkMove gs = \case
     Guess g
         | isValidGuess gs g ->
-            pickNewGivenLetters $
-                gs
+            pickNewGivenLetters
+                $ gs
                     { players = goToNextPlayer $ updateCurrent (validGuessForPlayer g) gs.players
                     , alreadyUsedWords = HashSet.insert g gs.alreadyUsedWords
                     }
@@ -141,7 +140,8 @@ isPlayerAlive ps = ps.lives > 0
 
 isValidGuess :: StartedGameState -> CaseInsensitiveText -> Bool
 isValidGuess gs g =
-    gs.givenLetters `CaseInsensitive.isInfixOf` g
+    gs.givenLetters
+        `CaseInsensitive.isInfixOf` g
         && not (g `HashSet.member` gs.alreadyUsedWords)
         && (g `HashSet.member` gs.validWords)
 

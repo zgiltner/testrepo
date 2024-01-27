@@ -6,19 +6,16 @@ module WithPlayerApi (PlayerId (..), API, withPlayerApi) where
 import RIO
 
 import Control.Monad.Error.Class (MonadError)
-import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson (FromJSON)
 import Data.Coerce (coerce)
-import Data.Hashable (Hashable)
 import Data.Maybe (fromMaybe)
-import Data.Text (Text)
-import qualified Data.Text as T
-import Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import Data.Text.Encoding (decodeUtf8)
 import Data.UUID (UUID)
 import qualified Data.UUID as UUID
 import Data.UUID.V4 (nextRandom)
 import Network.URI (parseURIReference)
 import qualified Network.Wai as Wai
+import qualified RIO.Text as T
 
 import Servant
 import Servant.HTML.Lucid
@@ -74,8 +71,11 @@ withPlayerApi _ a reqURI mCookies mReferer = login :<|> aServer
         Just playerId -> a playerId
     playerCookieName = "X-PLAYER-ID"
     mPlayerId =
-        fmap PlayerId . UUID.fromASCIIBytes
-            =<< lookup playerCookieName . parseCookies . encodeUtf8
+        fmap PlayerId
+            . UUID.fromASCIIBytes
+            =<< lookup playerCookieName
+            . parseCookies
+            . encodeUtf8
             =<< mCookies
     login :: ServerT LoginAPI m
     login = case mPlayerId of
@@ -102,16 +102,16 @@ instance {-# OVERLAPPING #-} (PlayerIdRedirect b) => PlayerIdRedirect (a -> b) w
 
 instance {-# OVERLAPPABLE #-} (MonadError ServerError m) => PlayerIdRedirect (m a) where
     redirect l =
-        throwError $
-            err302
+        throwError
+            $ err302
                 { errHeaders =
                     ("Location", encodeUtf8 $ T.pack $ show l) : errHeaders err302
                 }
 
 instance PlayerIdRedirect (RIO app m) where
     redirect l =
-        RIO.throwM $
-            err302
+        RIO.throwM
+            $ err302
                 { errHeaders =
                     ("Location", encodeUtf8 $ T.pack $ show l) : errHeaders err302
                 }

@@ -1,16 +1,13 @@
 module CaseInsensitive (CaseInsensitiveText, CaseInsensitiveChar (..), caseInsensitiveLetters, isInfixOf) where
 
+import RIO
+
 import qualified Data.Char as C
 import Data.Coerce (coerce)
-import Data.Function (on)
-import Data.HashSet (HashSet)
-import qualified Data.HashSet as HashSet
 import Data.Hashable (Hashable (..))
-import Data.String (IsString (..))
-import Data.Text (Text)
 import qualified Data.Text as T
-import GHC.Generics (Generic)
 import Lucid (ToHtml (..))
+import qualified RIO.HashSet as HashSet
 import Web.HttpApiData (FromHttpApiData)
 import Web.Internal.HttpApiData (FromHttpApiData (..))
 

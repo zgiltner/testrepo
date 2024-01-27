@@ -2,12 +2,9 @@
 
 module Timer (startTimer, stopTimer, restartTimer) where
 
+import RIO
+
 import App (App (..))
-import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async (async, cancel)
-import Control.Concurrent.STM (atomically, readTVar, readTVarIO, writeTChan, writeTVar)
-import Control.Monad (unless)
-import Control.Monad.IO.Class (liftIO)
 import Game (
     GameState (..),
     Move (..),
