@@ -45,7 +45,7 @@ withPlayerApiServer a mHotReload =
             api
             (server mHotReload)
   where
-    -- Lift thrown Servers into Left
+    -- Lift thrown ServerErrors into Left
     handleRIOServerErrors = handle @IO @ServerError (pure . Left)
 
 server :: Maybe (Html ()) -> PlayerId -> ServerT API AppM
