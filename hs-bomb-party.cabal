@@ -31,7 +31,6 @@ library
       DevelMain
       Game
       GameServer
-      Lib
       WithPlayerApi
   other-modules:
       Paths_hs_bomb_party

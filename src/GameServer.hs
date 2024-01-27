@@ -182,8 +182,10 @@ guess playerId p = do
     case gs of
         GameStateStarted gsS -> do
             a <- ask
-            -- It's the next players turn
-            when ((CZ.current gsS.players).tries == 0) $ liftIO (stopTimer a >> startTimer a)
+
+            when ((CZ.current gsS.players).tries == 0) $ do
+                -- It's the next players turn so let's restart the timer
+                liftIO (stopTimer a >> startTimer a)
         _ -> pure ()
     pure $ gameStateContainerUI playerId gs
 
@@ -193,8 +195,6 @@ updateGameState f = do
     liftIO $ atomically $ do
         (gs, chan) <- readTVar a.wsGameState
         let gs' = f gs
-        -- We always want to write the value set by the above to the channel
-        -- It's okay if it is stale
         writeTChan chan $ Left gs'
         gs' <$ writeTVar a.wsGameState (gs', chan)
 
@@ -300,6 +300,7 @@ guessInput v isMe isMyTurn playerId = do
                         then ""
                         else "bg-neutral-200"
           , value_ v
+          , autocomplete_ "off"
           ]
             <> [disabled_ "" | not isActivePlayersTurn]
             <> [autofocus_ | isActivePlayersTurn]
