@@ -30,7 +30,11 @@ library
       CircularZipper
       DevelMain
       Game
-      GameServer
+      Handlers
+      OrphanInstances
+      Server
+      Timer
+      Views
       WithPlayerApi
   other-modules:
       Paths_hs_bomb_party
@@ -93,6 +97,7 @@ library
     , nonempty-zipper
     , random
     , rapid
+    , rio
     , servant-htmx
     , servant-lucid
     , servant-server
@@ -172,6 +177,7 @@ executable hs-bomb-party-exe
     , nonempty-zipper
     , random
     , rapid
+    , rio
     , servant-htmx
     , servant-lucid
     , servant-server
@@ -255,6 +261,7 @@ test-suite hs-bomb-party-test
     , nonempty-zipper
     , random
     , rapid
+    , rio
     , servant-htmx
     , servant-lucid
     , servant-server

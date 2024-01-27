@@ -36,6 +36,7 @@ dependencies:
   - nonempty-zipper
   - rapid
   - random
+  - rio
   - servant-lucid
   - servant-server
   - servant-websockets

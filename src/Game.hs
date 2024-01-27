@@ -16,6 +16,7 @@ module Game (
     isGameOver,
     isPlayerAlive,
     isPlayerTurn,
+    gameStateMicrosecondsToGuess,
 ) where
 
 import CaseInsensitive (CaseInsensitiveChar (..), CaseInsensitiveText)
@@ -35,6 +36,7 @@ data UnStartedGameState = UnStartedGameState
     , givenLettersSet :: [CaseInsensitiveText]
     , stdGen :: StdGen
     , players :: HashSet PlayerId
+    , microsecondsToGuess :: Int
     }
 
 data StartedGameState = StartedGameState
@@ -44,6 +46,7 @@ data StartedGameState = StartedGameState
     , validWords :: HashSet CaseInsensitiveText
     , givenLettersSet :: [CaseInsensitiveText]
     , stdGen :: StdGen
+    , microsecondsToGuess :: Int
     }
 
 data PlayerState = PlayerState
@@ -53,7 +56,6 @@ data PlayerState = PlayerState
     , tries :: Int
     }
     deriving (Show)
-
 initialPlayerState :: PlayerId -> PlayerState
 initialPlayerState playerId =
     PlayerState
@@ -65,8 +67,13 @@ initialPlayerState playerId =
 
 data GameState = GameStateUnStarted UnStartedGameState | GameStateStarted StartedGameState
 
+gameStateMicrosecondsToGuess :: GameState -> Int
+gameStateMicrosecondsToGuess = \case
+    GameStateUnStarted g -> g.microsecondsToGuess
+    GameStateStarted g -> g.microsecondsToGuess
+
 initialGameState :: StdGen -> HashSet CaseInsensitiveText -> [CaseInsensitiveText] -> UnStartedGameState
-initialGameState stdGen validWords givenLettersSet = UnStartedGameState{players = mempty, ..}
+initialGameState stdGen validWords givenLettersSet = UnStartedGameState{players = mempty, microsecondsToGuess = 4000000, ..}
 
 startGame :: UnStartedGameState -> GameState
 startGame uGs@UnStartedGameState{..} = case toList players of

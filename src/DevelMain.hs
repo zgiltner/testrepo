@@ -9,7 +9,6 @@ import Control.Concurrent.STM (newTChan, newTChanIO, newTVarIO)
 import qualified Data.HashSet as HashSet
 import Data.Text (Text)
 import Game (GameState (..), initialGameState)
-import GameServer (app)
 import Lucid (Html, script_, src_)
 import Network.HTTP.Types (status400)
 import Network.Wai (responseLBS)
@@ -18,6 +17,7 @@ import Network.Wai.Handler.WebSockets (websocketsOr)
 import Network.WebSockets (ControlMessage (..), Message (..), acceptRequest, defaultConnectionOptions, receive, sendTextData, withPingThread)
 import Rapid (createRef, rapid, restart, start)
 import Servant.Server
+import Server (app)
 import System.Random (mkStdGen)
 import Text.Shakespeare.Text (st)
 
