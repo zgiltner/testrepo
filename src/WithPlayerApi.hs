@@ -3,6 +3,8 @@
 
 module WithPlayerApi (PlayerId (..), API, withPlayerApi) where
 
+import RIO
+
 import Control.Monad.Error.Class (MonadError)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson (FromJSON)
@@ -17,6 +19,7 @@ import qualified Data.UUID as UUID
 import Data.UUID.V4 (nextRandom)
 import Network.URI (parseURIReference)
 import qualified Network.Wai as Wai
+
 import Servant
 import Servant.HTML.Lucid
 import Servant.Server.Internal.Delayed (passToServer)
@@ -100,6 +103,14 @@ instance {-# OVERLAPPING #-} (PlayerIdRedirect b) => PlayerIdRedirect (a -> b) w
 instance {-# OVERLAPPABLE #-} (MonadError ServerError m) => PlayerIdRedirect (m a) where
     redirect l =
         throwError $
+            err302
+                { errHeaders =
+                    ("Location", encodeUtf8 $ T.pack $ show l) : errHeaders err302
+                }
+
+instance PlayerIdRedirect (RIO app m) where
+    redirect l =
+        RIO.throwM $
             err302
                 { errHeaders =
                     ("Location", encodeUtf8 $ T.pack $ show l) : errHeaders err302

@@ -6,12 +6,11 @@ module App (AppM, App (..)) where
 
 import Control.Concurrent.Async (Async)
 import Control.Concurrent.STM (TChan, TVar)
-import Control.Monad.Reader (ReaderT)
 import Game (GameState)
 import Lucid (Html)
-import Servant (Handler)
+import RIO (RIO)
 
-type AppM = ReaderT App Handler
+type AppM = RIO App
 
 data App = App
     { wsGameState :: TVar (GameState, TChan (Either GameState (Html ())))

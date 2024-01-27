@@ -5,8 +5,13 @@
 
 module Server (app) where
 
+import RIO
+
 import App (App (..), AppM)
-import Control.Monad.Reader (ReaderT (..))
+import Control.Exception (catch)
+import Control.Monad.Error.Class (catchError)
+import Control.Monad.Except (ExceptT (ExceptT))
+import Control.Monad.Reader (ReaderT (..), liftIO)
 import qualified Handlers
 import Lucid hiding (for_)
 import OrphanInstances ()
@@ -35,10 +40,16 @@ withPlayerApi = Proxy
 
 withPlayerApiServer :: App -> Maybe (Html ()) -> Server (WithPlayerApi.API API)
 withPlayerApiServer a mHotReload =
-    hoistServer withPlayerApi (`runReaderT` a) $
-        WithPlayerApi.withPlayerApi
+    hoistServer
+        withPlayerApi
+        ( Servant.Handler . ExceptT . handleRIOServerErrors . fmap Right . runRIO a
+        )
+        $ WithPlayerApi.withPlayerApi
             api
             (server mHotReload)
+  where
+    -- Lift thrown Servers into Left
+    handleRIOServerErrors = handle @IO @ServerError (pure . Left)
 
 server :: Maybe (Html ()) -> PlayerId -> ServerT API AppM
 server mHotReload playerId =

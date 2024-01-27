@@ -5,7 +5,7 @@ module DevelMain (update) where
 import App (App (..))
 import Control.Concurrent (Chan, dupChan, newChan, readChan, writeChan)
 import Control.Concurrent.Async (race_)
-import Control.Concurrent.STM (newTChan, newTChanIO, newTVarIO)
+import Control.Concurrent.STM (newTChanIO, newTVarIO)
 import qualified Data.HashSet as HashSet
 import Data.Text (Text)
 import Game (GameState (..), initialGameState)
