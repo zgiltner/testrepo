@@ -16,7 +16,6 @@ import Data.UUID.V4 (nextRandom)
 import Network.URI (parseURIReference)
 import qualified Network.Wai as Wai
 import qualified RIO.Text as T
-
 import Servant
 import Servant.HTML.Lucid
 import Servant.Server.Internal.Delayed (passToServer)
@@ -25,6 +24,9 @@ import Web.Cookie (SetCookie (..), defaultSetCookie, parseCookies)
 newtype PlayerId = PlayerId {getPlayerId :: UUID}
     deriving stock (Eq, Show)
     deriving newtype (Hashable, FromJSON)
+
+instance FromHttpApiData PlayerId where
+    parseQueryParam = maybe (Left "PlayerId not a valid UUID") (Right . PlayerId) . UUID.fromText
 
 type API a =
     RequestURI

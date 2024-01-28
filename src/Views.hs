@@ -35,6 +35,7 @@ sharedHead :: Maybe (Html ()) -> Html ()
 sharedHead mHotreload = head_ $ do
     meta_ [charset_ "UTF-8"]
     meta_ [name_ "viewport_", content_ "width=device-width, initial-scale=1.0"]
+    link_ [rel_ "icon", href_ "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💣</text></svg>"]
     script_ [src_ "https://cdn.tailwindcss.com"] ("" :: String)
     script_
         [ src_ "https://unpkg.com/htmx.org@1.9.10"
@@ -76,24 +77,24 @@ gameStateUI api me gs = div_ [id_ "gameState"] $ do
                     , value_ $ tshow uGs.secondsToGuess
                     ]
             h1_ "Players"
-            ul_ $ for_ uGs.players $ \(PlayerId i) -> li_ $ toHtml $ T.pack $ show i
-            if me `elem` uGs.players
-                then
-                    button_
-                        [ type_ "button"
-                        , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
-                        , hxPostSafe_ $ safeLink api (Proxy @("leave" :> Post '[HTML] (Html ())))
-                        , hxTarget_ "#gameState"
-                        ]
-                        "Leave Game"
-                else
-                    button_
-                        [ type_ "button"
-                        , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
-                        , hxPostSafe_ $ safeLink api (Proxy @("join" :> Post '[HTML] (Html ())))
-                        , hxTarget_ "#gameState"
-                        ]
-                        "Join Game"
+            ul_ $ for_ uGs.players $ \(PlayerId i) -> li_ $ do
+                button_
+                    [ type_ "button"
+                    , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
+                    , hxPostSafe_ $ safeLink api (Proxy @("leave" :> Post '[HTML] (Html ())))
+                    , hxTarget_ "#gameState"
+                    , hxVals_ [st|{"playerId":"#{UUID.toText i}"}|]
+                    ]
+                    "x"
+                toHtml $ T.pack $ show i
+            unless (me `elem` uGs.players)
+                $ button_
+                    [ type_ "button"
+                    , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
+                    , hxPostSafe_ $ safeLink api (Proxy @("join" :> Post '[HTML] (Html ())))
+                    , hxTarget_ "#gameState"
+                    ]
+                    "Join Game"
             unless (null uGs.players)
                 $ button_
                     [ type_ "button"
@@ -103,14 +104,14 @@ gameStateUI api me gs = div_ [id_ "gameState"] $ do
                     ]
                     "Start Game"
         GameStateStarted sGs -> do
-            when (isGameOver sGs) $ do
-                button_
-                    [ type_ "button"
-                    , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-green-500 text-white hover:bg-green-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
-                    , hxPostSafe_ $ safeLink api (Proxy @("start-over" :> Post '[HTML] (Html ())))
-                    , hxTarget_ "#gameState"
-                    ]
-                    "Start A New Game"
+            button_
+                [ type_ "button"
+                , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
+                , tabindex_ "-1"
+                , hxPostSafe_ $ safeLink api (Proxy @("start-over" :> Post '[HTML] (Html ())))
+                , hxTarget_ "#gameState"
+                ]
+                "Start A New Game"
             unless (isGameOver sGs)
                 $ div_
                     [ id_ "given-letters"

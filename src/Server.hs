@@ -21,7 +21,9 @@ import qualified WithPlayerApi
 type API =
     Get '[HTML] (Html ())
         :<|> "join" :> Post '[HTML] (Html ())
-        :<|> "leave" :> Post '[HTML] (Html ())
+        :<|> "leave"
+            :> ReqBody '[FormUrlEncoded] Handlers.LeavePost
+            :> Post '[HTML] (Html ())
         :<|> "settings"
             :> ReqBody '[FormUrlEncoded] Handlers.SettingsPost
             :> Post '[HTML] (Html ())

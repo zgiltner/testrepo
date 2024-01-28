@@ -31,7 +31,7 @@ import OrphanInstances ()
 import Servant
 import Servant.API.WebSocket (WebSocket)
 import Servant.HTML.Lucid
-import Timer (restartTimer, startTimer)
+import Timer (restartTimer, startTimer, stopTimer)
 import Views (gameStateUI, guessInput, sharedHead)
 import Web.FormUrlEncoded (FromForm (..))
 import WithPlayerApi (PlayerId (..))
@@ -89,16 +89,23 @@ join api me = do
             x -> x
     pure $ gameStateUI api me gs
 
+newtype LeavePost = LeavePost
+    {playerId :: PlayerId}
+    deriving stock (Show, Generic)
+
+instance FromForm LeavePost
+
 leave ::
     ( APIConstraints api
     ) =>
     Proxy api ->
     PlayerId ->
+    LeavePost ->
     AppM (Html ())
-leave api me = do
+leave api me p = do
     gs <- updateGameState
         $ \case
-            GameStateUnStarted uGs -> GameStateUnStarted uGs{players = HashSet.delete me uGs.players}
+            GameStateUnStarted uGs -> GameStateUnStarted uGs{players = HashSet.delete p.playerId uGs.players}
             x -> x
     pure $ gameStateUI api me gs
 
@@ -134,7 +141,7 @@ start api me = do
         x -> x
     a <- ask
     case gs of
-        GameStateStarted _ -> liftIO $ startTimer a
+        GameStateStarted _ -> startTimer a
         _ -> pure ()
     pure $ gameStateUI api me gs
 
@@ -145,6 +152,7 @@ startOver ::
     PlayerId ->
     AppM (Html ())
 startOver api me = do
+    stopTimer =<< ask
     gs <- updateGameState $ \case
         GameStateStarted gss ->
             GameStateUnStarted gss.settings
@@ -173,7 +181,7 @@ guess api me p = do
 
             when ((CZ.current gsS.players).tries == 0) $ do
                 -- It's the next players turn so let's restart the timer
-                liftIO $ restartTimer a
+                restartTimer a
         _ -> pure ()
     pure $ gameStateUI api me gs
 
@@ -192,7 +200,7 @@ ws ::
     AppM ()
 ws api me c = do
     a <- ask
-    myChan <- liftIO $ atomically $ do
+    myChan <- atomically $ do
         (_, chan) <- readTVar a.wsGameState
         dupTChan chan
     let
