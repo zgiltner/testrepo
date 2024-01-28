@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module Views where
 
@@ -26,6 +27,7 @@ import qualified RIO.HashSet as HashSet
 import qualified RIO.Text as T
 import Servant
 import Servant.HTML.Lucid
+import Text.Shakespeare.Text (st)
 import WithPlayerApi (PlayerId (..))
 
 sharedHead :: Maybe (Html ()) -> Html ()
@@ -41,6 +43,7 @@ sharedHead mHotreload = head_ $ do
         ("" :: String)
     script_ [src_ "https://unpkg.com/hyperscript.org@0.9.12"] ("" :: String)
     script_ [src_ "https://unpkg.com/htmx.org/dist/ext/ws.js"] ("" :: String)
+    style_ [] shakeAnimationCss
     title_ "BombParty"
     sequenceA_ mHotreload
 
@@ -55,10 +58,10 @@ gameStateUI ::
     PlayerId ->
     GameState ->
     Html ()
-gameStateUI api playerId gs = div_ [id_ "gameState"] $ do
+gameStateUI api me gs = div_ [id_ "gameState"] $ do
     case gs of
         GameStateUnStarted uGs -> do
-            if playerId `elem` uGs.players
+            if me `elem` uGs.players
                 then
                     button_
                         [ type_ "button"
@@ -93,9 +96,18 @@ gameStateUI api playerId gs = div_ [id_ "gameState"] $ do
                     , hxTarget_ "#gameState"
                     ]
                     "Start A New Game"
-            unless (isGameOver sGs) $ div_ [class_ "text-2xl font-mono"] $ toHtml sGs.givenLetters
-            ul_ [class_ "space-y-3"] $ do
-                traverse_ (playerStateUI api playerId sGs) $ playerFirst playerId sGs.players
+            unless (isGameOver sGs)
+                $ div_
+                    [ id_ "given-letters"
+                    , class_ "text-2xl font-mono"
+                    ]
+                $ toHtml sGs.givenLetters
+            ul_
+                [ id_ "player-states"
+                , class_ "space-y-3"
+                ]
+                $ do
+                    traverse_ (playerStateUI api me sGs) $ playerFirst me sGs.players
 
 playerStateUI ::
     ( IsElem ("guess" :> Post '[HTML] (Html ())) api
@@ -105,12 +117,11 @@ playerStateUI ::
     StartedGameState ->
     PlayerState ->
     Html ()
-playerStateUI api pId gs ps = do
-    li_ [class_ $ "p-2 rounded-lg " <> bg <> " " <> outline]
-        $ form_
-            [ hxPostSafe_ $ safeLink api (Proxy @("guess" :> Post '[HTML] (Html ())))
-            , hxTarget_ "#gameState"
-            ]
+playerStateUI api me gs ps = do
+    li_
+        [ id_ $ "player-state-" <> UUID.toText (getPlayerId me)
+        , class_ $ "p-2 rounded-lg " <> bg <> " " <> outline
+        ]
         $ do
             if isPlayerAlive ps
                 then
@@ -118,8 +129,14 @@ playerStateUI api pId gs ps = do
                         then h1_ [class_ "text-center text-2xl"] "✨✨✨✨✨WINNER✨✨✨✨✨"
                         else do
                             letterUI ps.letters
-                            div_ $ replicateM_ ps.lives $ toHtml ("❤️" :: String)
-                            guessInput "" (pId == ps.id) (isPlayerTurn gs.players ps) ps.id
+                            div_ [id_ $ "player-state-lives-" <> UUID.toText (getPlayerId me)] $ replicateM_ ps.lives $ toHtml ("❤️" :: String)
+                            form_
+                                [ id_ $ "player-state-form-" <> UUID.toText (getPlayerId me)
+                                , hxPostSafe_ $ safeLink api (Proxy @("guess" :> Post '[HTML] (Html ())))
+                                , hxTarget_ "#gameState"
+                                ]
+                                $ do
+                                    guessInput "" (me == ps.id) (isPlayerTurn gs.players ps) (ps.tries > 0) ps.id
                 else h1_ [class_ "text-center text-2xl"] "☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️"
   where
     outline =
@@ -134,16 +151,16 @@ playerStateUI api pId gs ps = do
 playerInputId :: Bool -> PlayerId -> Text
 playerInputId isMe playerId = "input-" <> UUID.toText (getPlayerId playerId) <> "-" <> if isMe then "me" else "other"
 
-guessInput :: Text -> Bool -> Bool -> PlayerId -> Html ()
-guessInput v isMe isMyTurn playerId = do
+guessInput :: Text -> Bool -> Bool -> Bool -> PlayerId -> Html ()
+guessInput v isMe isMyTurn invaldGuess playerId = do
     input_
         ( [ id_ $ playerInputId isMe playerId
           , name_ "guess"
           , class_
-                $ "border-2 "
-                <> if isActivePlayersTurn
-                    then ""
-                    else "bg-neutral-200"
+                $ "border-2 caret-blue-900 "
+                <> if invaldGuess
+                    then "shake"
+                    else ""
           , value_ v
           , autocomplete_ "off"
           ]
@@ -164,3 +181,26 @@ playerFirst :: PlayerId -> CircularZipper PlayerState -> [PlayerState]
 playerFirst pId cz = CZ.current playerCurrent : CZ.rights playerCurrent <> CZ.lefts playerCurrent
   where
     playerCurrent = fromMaybe cz $ CZ.findRight ((== pId) . (.id)) cz
+
+shakeAnimationCss :: Text
+shakeAnimationCss =
+    [st|
+@keyframes shake {
+  0% {
+    margin-left: 0rem;
+  }
+  25% {
+    margin-left: 0.5rem;
+  }
+  75% {
+    margin-left: -0.5rem;
+  }
+  100% {
+    margin-left: 0rem;
+  }
+}
+
+.shake {
+  animation: shake 0.2s ease-in-out 0s 2;
+}
+|]

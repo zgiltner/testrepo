@@ -55,6 +55,7 @@ data PlayerState = PlayerState
     , tries :: Int
     }
     deriving (Show)
+
 initialPlayerState :: PlayerId -> PlayerState
 initialPlayerState playerId =
     PlayerState

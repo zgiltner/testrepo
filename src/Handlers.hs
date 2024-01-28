@@ -53,7 +53,7 @@ home ::
     Maybe (Html ()) ->
     PlayerId ->
     AppM (Html ())
-home api mHotreload playerId = do
+home api mHotreload me = do
     a <- ask
     (gs, _) <- liftIO $ readTVarIO a.wsGameState
     pure $ html_ $ do
@@ -65,7 +65,7 @@ home api mHotreload playerId = do
                 , makeAttribute "ws-connect" $ "/" <> toUrlPiece (safeLink api (Proxy @("ws" :> WebSocket)))
                 , class_ "container mx-auto px-4 py-4"
                 ]
-            $ gameStateUI api playerId gs
+            $ gameStateUI api me gs
 
 updateGameState :: (GameState -> GameState) -> AppM GameState
 updateGameState f = do
@@ -82,12 +82,12 @@ join ::
     Proxy api ->
     PlayerId ->
     AppM (Html ())
-join api playerId = do
+join api me = do
     gs <- updateGameState
         $ \case
-            GameStateUnStarted uGs -> GameStateUnStarted uGs{players = HashSet.insert playerId uGs.players}
+            GameStateUnStarted uGs -> GameStateUnStarted uGs{players = HashSet.insert me uGs.players}
             x -> x
-    pure $ gameStateUI api playerId gs
+    pure $ gameStateUI api me gs
 
 leave ::
     ( APIConstraints api
@@ -95,12 +95,12 @@ leave ::
     Proxy api ->
     PlayerId ->
     AppM (Html ())
-leave api playerId = do
+leave api me = do
     gs <- updateGameState
         $ \case
-            GameStateUnStarted uGs -> GameStateUnStarted uGs{players = HashSet.delete playerId uGs.players}
+            GameStateUnStarted uGs -> GameStateUnStarted uGs{players = HashSet.delete me uGs.players}
             x -> x
-    pure $ gameStateUI api playerId gs
+    pure $ gameStateUI api me gs
 
 start ::
     ( APIConstraints api
@@ -108,7 +108,7 @@ start ::
     Proxy api ->
     PlayerId ->
     AppM (Html ())
-start api playerId = do
+start api me = do
     gs <- updateGameState $ \case
         GameStateUnStarted uGs -> startGame uGs
         x -> x
@@ -116,7 +116,7 @@ start api playerId = do
     case gs of
         GameStateStarted _ -> liftIO $ startTimer a
         _ -> pure ()
-    pure $ gameStateUI api playerId gs
+    pure $ gameStateUI api me gs
 
 startOver ::
     ( APIConstraints api
@@ -124,7 +124,7 @@ startOver ::
     Proxy api ->
     PlayerId ->
     AppM (Html ())
-startOver api playerId = do
+startOver api me = do
     gs <- updateGameState $ \case
         GameStateStarted gss ->
             startGame
@@ -136,7 +136,7 @@ startOver api playerId = do
     case gs of
         GameStateStarted _ -> liftIO $ startTimer a
         _ -> pure ()
-    pure $ gameStateUI api playerId gs
+    pure $ gameStateUI api me gs
 
 newtype GuessPost = GuessPost {guess :: CaseInsensitiveText}
     deriving stock (Show, Generic)
@@ -150,7 +150,7 @@ guess ::
     PlayerId ->
     GuessPost ->
     AppM (Html ())
-guess api playerId p = do
+guess api me p = do
     gs <- updateGameState $ \case
         GameStateStarted gs -> GameStateStarted $ mkMove gs $ Guess p.guess
         x -> x
@@ -162,7 +162,7 @@ guess api playerId p = do
                 -- It's the next players turn so let's restart the timer
                 liftIO $ restartTimer a
         _ -> pure ()
-    pure $ gameStateUI api playerId gs
+    pure $ gameStateUI api me gs
 
 newtype WsMsg = WsMsg
     { guess :: Text
@@ -177,7 +177,7 @@ ws ::
     PlayerId ->
     WS.Connection ->
     AppM ()
-ws api playerId c = do
+ws api me c = do
     a <- ask
     myChan <- liftIO $ atomically $ do
         (_, chan) <- readTVar a.wsGameState
@@ -196,14 +196,14 @@ ws api playerId c = do
                     case eitherDecode @WsMsg msgString of
                         Left err -> logError $ "WebSocket received bad json: " <> fromString err
                         Right msg -> do
-                            atomically $ writeTChan myChan $ Right $ guessInput msg.guess False False playerId
+                            atomically $ writeTChan myChan $ Right $ guessInput msg.guess False False False me
                     listener
                 _ -> listener
         sender :: AppM ()
         sender = do
             msg <- atomically $ readTChan myChan
             liftIO $ WS.sendTextData @Text c $ TL.toStrict $ renderText $ case msg of
-                Left gs -> gameStateUI api playerId gs
+                Left gs -> gameStateUI api me gs
                 Right h -> h
             sender
     runConcurrently $ asum (Concurrently <$> [pingThread 0, listener, sender])
