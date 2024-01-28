@@ -22,6 +22,9 @@ type API =
     Get '[HTML] (Html ())
         :<|> "join" :> Post '[HTML] (Html ())
         :<|> "leave" :> Post '[HTML] (Html ())
+        :<|> "settings"
+            :> ReqBody '[FormUrlEncoded] Handlers.SettingsPost
+            :> Post '[HTML] (Html ())
         :<|> "start" :> Post '[HTML] (Html ())
         :<|> "start-over" :> Post '[HTML] (Html ())
         :<|> "guess"
@@ -54,6 +57,7 @@ server mHotReload playerId =
     Handlers.home api mHotReload playerId
         :<|> Handlers.join api playerId
         :<|> Handlers.leave api playerId
+        :<|> Handlers.settings api playerId
         :<|> Handlers.start api playerId
         :<|> Handlers.startOver api playerId
         :<|> Handlers.guess api playerId

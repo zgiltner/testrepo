@@ -20,6 +20,7 @@ import Game (
     isPlayerTurn,
  )
 import Lucid hiding (for_)
+import qualified Lucid
 import Lucid.Base (makeAttribute)
 import Lucid.Htmx
 import Lucid.Htmx.Servant (hxPostSafe_)
@@ -50,6 +51,7 @@ sharedHead mHotreload = head_ $ do
 gameStateUI ::
     ( IsElem ("leave" :> Post '[HTML] (Html ())) api
     , IsElem ("join" :> Post '[HTML] (Html ())) api
+    , IsElem ("settings" :> Post '[HTML] (Html ())) api
     , IsElem ("start" :> Post '[HTML] (Html ())) api
     , IsElem ("start-over" :> Post '[HTML] (Html ())) api
     , IsElem ("guess" :> Post '[HTML] (Html ())) api
@@ -61,6 +63,20 @@ gameStateUI ::
 gameStateUI api me gs = div_ [id_ "gameState"] $ do
     case gs of
         GameStateUnStarted uGs -> do
+            h1_ "Settings"
+            div_ $ do
+                label_ [Lucid.for_ "secondsToGuess"] "Seconds per  guess"
+                input_
+                    [ id_ "secondsToGuess"
+                    , name_ "secondsToGuess"
+                    , class_ "border-2 caret-blue-900 "
+                    , autocomplete_ "off"
+                    , hxPostSafe_ $ safeLink api (Proxy @("settings" :> Post '[HTML] (Html ())))
+                    , type_ "number"
+                    , value_ $ tshow uGs.secondsToGuess
+                    ]
+            h1_ "Players"
+            ul_ $ for_ uGs.players $ \(PlayerId i) -> li_ $ toHtml $ T.pack $ show i
             if me `elem` uGs.players
                 then
                     button_
@@ -78,7 +94,6 @@ gameStateUI api me gs = div_ [id_ "gameState"] $ do
                         , hxTarget_ "#gameState"
                         ]
                         "Join Game"
-            ul_ $ for_ uGs.players $ \(PlayerId i) -> li_ $ toHtml $ T.pack $ show i
             unless (null uGs.players)
                 $ button_
                     [ type_ "button"

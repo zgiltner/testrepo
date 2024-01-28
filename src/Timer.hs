@@ -8,7 +8,7 @@ import App (App (..))
 import Game (
     GameState (..),
     Move (..),
-    gameStateMicrosecondsToGuess,
+    gameStateSecondsToGuess,
     isGameOver,
     mkMove,
  )
@@ -19,7 +19,7 @@ startTimer a = do
     atomically $ writeTVar a.wsGameStateTimer $ Just t
   where
     go = do
-        threadDelay . gameStateMicrosecondsToGuess . fst =<< readTVarIO a.wsGameState
+        threadDelay . (* 10 ^ 6) . gameStateSecondsToGuess . fst =<< readTVarIO a.wsGameState
         gs <- atomically $ do
             (gs, chan) <- readTVar a.wsGameState
             case gs of

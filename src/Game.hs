@@ -16,7 +16,7 @@ module Game (
     isGameOver,
     isPlayerAlive,
     isPlayerTurn,
-    gameStateMicrosecondsToGuess,
+    gameStateSecondsToGuess,
 ) where
 
 import RIO
@@ -35,7 +35,7 @@ data UnStartedGameState = UnStartedGameState
     , givenLettersSet :: [CaseInsensitiveText]
     , stdGen :: StdGen
     , players :: HashSet PlayerId
-    , microsecondsToGuess :: Int
+    , secondsToGuess :: Int
     }
 
 data StartedGameState = StartedGameState
@@ -45,7 +45,7 @@ data StartedGameState = StartedGameState
     , validWords :: HashSet CaseInsensitiveText
     , givenLettersSet :: [CaseInsensitiveText]
     , stdGen :: StdGen
-    , microsecondsToGuess :: Int
+    , secondsToGuess :: Int
     }
 
 data PlayerState = PlayerState
@@ -67,13 +67,13 @@ initialPlayerState playerId =
 
 data GameState = GameStateUnStarted UnStartedGameState | GameStateStarted StartedGameState
 
-gameStateMicrosecondsToGuess :: GameState -> Int
-gameStateMicrosecondsToGuess = \case
-    GameStateUnStarted g -> g.microsecondsToGuess
-    GameStateStarted g -> g.microsecondsToGuess
+gameStateSecondsToGuess :: GameState -> Int
+gameStateSecondsToGuess = \case
+    GameStateUnStarted g -> g.secondsToGuess
+    GameStateStarted g -> g.secondsToGuess
 
 initialGameState :: StdGen -> HashSet CaseInsensitiveText -> [CaseInsensitiveText] -> UnStartedGameState
-initialGameState stdGen validWords givenLettersSet = UnStartedGameState{players = mempty, microsecondsToGuess = 4000000, ..}
+initialGameState stdGen validWords givenLettersSet = UnStartedGameState{players = mempty, secondsToGuess = 4, ..}
 
 startGame :: UnStartedGameState -> GameState
 startGame uGs@UnStartedGameState{..} = case toList players of

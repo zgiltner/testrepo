@@ -2,6 +2,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE NoFieldSelectors #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 module Handlers where
 
@@ -41,6 +42,7 @@ type APIConstraints api =
     ( IsElem ("leave" :> Post '[HTML] (Html ())) api
     , IsElem ("join" :> Post '[HTML] (Html ())) api
     , IsElem ("start" :> Post '[HTML] (Html ())) api
+    , IsElem ("settings" :> Post '[HTML] (Html ())) api
     , IsElem ("start-over" :> Post '[HTML] (Html ())) api
     , IsElem ("guess" :> Post '[HTML] (Html ())) api
     )
@@ -102,6 +104,26 @@ leave api me = do
             x -> x
     pure $ gameStateUI api me gs
 
+data SettingsPost = SettingsPost
+    {secondsToGuess :: Int}
+    deriving stock (Show, Generic)
+
+instance FromForm SettingsPost
+
+settings ::
+    ( APIConstraints api
+    ) =>
+    Proxy api ->
+    PlayerId ->
+    SettingsPost ->
+    AppM (Html ())
+settings api me p = do
+    gs <- updateGameState
+        $ \case
+            GameStateUnStarted uGs -> GameStateUnStarted uGs{secondsToGuess = p.secondsToGuess}
+            x -> x
+    pure $ gameStateUI api me gs
+
 start ::
     ( APIConstraints api
     ) =>
@@ -127,9 +149,10 @@ startOver ::
 startOver api me = do
     gs <- updateGameState $ \case
         GameStateStarted gss ->
-            startGame
+            GameStateUnStarted
                 (initialGameState gss.stdGen gss.validWords gss.givenLettersSet)
                     { players = HashSet.fromList $ fmap (.id) $ toList $ getCircularZipper gss.players
+                    , secondsToGuess = gss.secondsToGuess
                     }
         x -> x
     a <- ask
