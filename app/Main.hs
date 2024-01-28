@@ -7,6 +7,7 @@ import Game (GameState (..), initialGameState)
 import Network.Wai.Handler.Warp
 import qualified RIO.HashSet as HashSet
 import Server (app)
+import System.Environment (lookupEnv)
 import System.Random (mkStdGen)
 
 main :: IO ()
@@ -25,4 +26,6 @@ main = do
 
     logOptions' <- logOptionsHandle stderr False
     let logOptions = setLogUseTime True logOptions'
-    withLogFunc logOptions $ \logFunction -> run 8080 $ app App{..} Nothing
+    portEnv <- lookupEnv "APP_PORT"
+    let port = fromMaybe 8080 $ readMaybe @Int =<< portEnv
+    withLogFunc logOptions $ \logFunction -> run port $ app App{..} Nothing
