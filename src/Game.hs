@@ -5,7 +5,8 @@
 
 module Game (
     GameState (..),
-    UnStartedGameState (..),
+    Settings (..),
+    HasSettings (..),
     StartedGameState (..),
     Move (..),
     PlayerState (..),
@@ -16,7 +17,6 @@ module Game (
     isGameOver,
     isPlayerAlive,
     isPlayerTurn,
-    gameStateSecondsToGuess,
 ) where
 
 import RIO
@@ -30,7 +30,7 @@ import RIO.List.Partial ((!!))
 import System.Random (StdGen, randomR)
 import WithPlayerApi (PlayerId (..))
 
-data UnStartedGameState = UnStartedGameState
+data Settings = Settings
     { validWords :: HashSet CaseInsensitiveText
     , givenLettersSet :: [CaseInsensitiveText]
     , stdGen :: StdGen
@@ -38,15 +38,20 @@ data UnStartedGameState = UnStartedGameState
     , secondsToGuess :: Int
     }
 
+class HasSettings a where
+    settingsL :: Lens' a Settings
+
+instance HasSettings Settings where
+    settingsL = lens id $ \_ s -> s
+
 data StartedGameState = StartedGameState
     { players :: CircularZipper PlayerState
     , givenLetters :: CaseInsensitiveText
     , alreadyUsedWords :: HashSet CaseInsensitiveText
-    , validWords :: HashSet CaseInsensitiveText
-    , givenLettersSet :: [CaseInsensitiveText]
-    , stdGen :: StdGen
-    , secondsToGuess :: Int
+    , settings :: Settings
     }
+instance HasSettings StartedGameState where
+    settingsL = lens (.settings) $ \g settings -> g{settings}
 
 data PlayerState = PlayerState
     { id :: PlayerId
@@ -65,27 +70,34 @@ initialPlayerState playerId =
         , tries = 0
         }
 
-data GameState = GameStateUnStarted UnStartedGameState | GameStateStarted StartedGameState
+data GameState = GameStateUnStarted Settings | GameStateStarted StartedGameState
 
-gameStateSecondsToGuess :: GameState -> Int
-gameStateSecondsToGuess = \case
-    GameStateUnStarted g -> g.secondsToGuess
-    GameStateStarted g -> g.secondsToGuess
+instance HasSettings GameState where
+    settingsL =
+        lens
+            ( \case
+                GameStateUnStarted s -> s
+                GameStateStarted g -> view settingsL g
+            )
+            ( \gs settings -> case gs of
+                GameStateUnStarted _ -> GameStateUnStarted settings
+                GameStateStarted g -> GameStateStarted $ g{settings}
+            )
 
-initialGameState :: StdGen -> HashSet CaseInsensitiveText -> [CaseInsensitiveText] -> UnStartedGameState
-initialGameState stdGen validWords givenLettersSet = UnStartedGameState{players = mempty, secondsToGuess = 4, ..}
+initialGameState :: StdGen -> HashSet CaseInsensitiveText -> [CaseInsensitiveText] -> Settings
+initialGameState stdGen validWords givenLettersSet = Settings{players = mempty, secondsToGuess = 4, ..}
 
-startGame :: UnStartedGameState -> GameState
-startGame uGs@UnStartedGameState{..} = case toList players of
-    [] -> GameStateUnStarted uGs
+startGame :: Settings -> GameState
+startGame s = case toList s.players of
+    [] -> GameStateUnStarted s
     (p : ps) ->
         let
-            (givenLetters, stdGen') = randomGivenLetters stdGen givenLettersSet
+            (givenLetters, stdGen) = randomGivenLetters s.stdGen s.givenLettersSet
+            settings = s{stdGen}
          in
             GameStateStarted
                 $ StartedGameState
                     { alreadyUsedWords = mempty
-                    , stdGen = stdGen'
                     , players = CZ.fromNonEmpty $ fmap initialPlayerState $ p :| ps
                     , ..
                     }
@@ -111,7 +123,9 @@ mkMove gs = \case
             }
 
 pickNewGivenLetters :: StartedGameState -> StartedGameState
-pickNewGivenLetters gs = let (givenLetters, stdGen) = randomGivenLetters gs.stdGen gs.givenLettersSet in gs{givenLetters, stdGen}
+pickNewGivenLetters gs =
+    let (givenLetters, stdGen) = randomGivenLetters gs.settings.stdGen gs.settings.givenLettersSet
+     in gs{givenLetters, settings = gs.settings{stdGen}}
 
 randomGivenLetters :: StdGen -> [CaseInsensitiveText] -> (CaseInsensitiveText, StdGen)
 randomGivenLetters stdGen givenLettersSet = let (i, stdGen') = randomR (0, length givenLettersSet - 1) stdGen in (givenLettersSet !! i, stdGen')
@@ -144,7 +158,7 @@ isValidGuess gs g =
     gs.givenLetters
         `CaseInsensitive.isInfixOf` g
         && not (g `HashSet.member` gs.alreadyUsedWords)
-        && (g `HashSet.member` gs.validWords)
+        && (g `HashSet.member` gs.settings.validWords)
 
 isPlayerTurn :: CircularZipper PlayerState -> PlayerState -> Bool
 isPlayerTurn z ps = (CZ.current z).id == ps.id

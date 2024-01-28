@@ -10,7 +10,6 @@ import RIO
 
 import App (App (..), AppM)
 import CaseInsensitive (CaseInsensitiveText)
-import CircularZipper (CircularZipper (..))
 import qualified CircularZipper as CZ
 import Data.Aeson (FromJSON, eitherDecode)
 import qualified Data.HashSet as HashSet
@@ -19,9 +18,8 @@ import Game (
     GameState (..),
     Move (..),
     PlayerState (..),
+    Settings (..),
     StartedGameState (..),
-    UnStartedGameState (..),
-    initialGameState,
     mkMove,
     startGame,
  )
@@ -149,16 +147,8 @@ startOver ::
 startOver api me = do
     gs <- updateGameState $ \case
         GameStateStarted gss ->
-            GameStateUnStarted
-                (initialGameState gss.stdGen gss.validWords gss.givenLettersSet)
-                    { players = HashSet.fromList $ fmap (.id) $ toList $ getCircularZipper gss.players
-                    , secondsToGuess = gss.secondsToGuess
-                    }
+            GameStateUnStarted gss.settings
         x -> x
-    a <- ask
-    case gs of
-        GameStateStarted _ -> liftIO $ startTimer a
-        _ -> pure ()
     pure $ gameStateUI api me gs
 
 newtype GuessPost = GuessPost {guess :: CaseInsensitiveText}

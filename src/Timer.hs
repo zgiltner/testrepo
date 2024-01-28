@@ -7,8 +7,9 @@ import RIO
 import App (App (..))
 import Game (
     GameState (..),
+    HasSettings (..),
     Move (..),
-    gameStateSecondsToGuess,
+    Settings (secondsToGuess),
     isGameOver,
     mkMove,
  )
@@ -19,7 +20,7 @@ startTimer a = do
     atomically $ writeTVar a.wsGameStateTimer $ Just t
   where
     go = do
-        threadDelay . (* 10 ^ 6) . gameStateSecondsToGuess . fst =<< readTVarIO a.wsGameState
+        threadDelay . (* 10 ^ 6) . (.secondsToGuess) . view settingsL . fst =<< readTVarIO a.wsGameState
         gs <- atomically $ do
             (gs, chan) <- readTVar a.wsGameState
             case gs of

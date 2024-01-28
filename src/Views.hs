@@ -13,8 +13,8 @@ import qualified Data.UUID as UUID
 import Game (
     GameState (..),
     PlayerState (..),
+    Settings (..),
     StartedGameState (..),
-    UnStartedGameState (..),
     isGameOver,
     isPlayerAlive,
     isPlayerTurn,
