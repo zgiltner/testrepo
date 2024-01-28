@@ -39,12 +39,13 @@ withPlayerApiServer :: App -> Maybe (Html ()) -> Server (WithPlayerApi.API API)
 withPlayerApiServer a mHotReload =
     hoistServer
         withPlayerApi
-        ( Servant.Handler . ExceptT . handleRIOServerErrors . fmap Right . runRIO a
+        ( Servant.Handler . ExceptT . handleRIOServerErrors . fmap Right . runRIO a . logErrors
         )
         $ WithPlayerApi.withPlayerApi
             api
             (server mHotReload)
   where
+    logErrors = handleAny $ \e -> logError (displayShow e) >> throwM e
     -- Lift thrown ServerErrors into Left
     handleRIOServerErrors = handle @IO @ServerError (pure . Left)
 

@@ -13,6 +13,7 @@ import Network.Wai (responseLBS)
 import Network.Wai.Handler.Warp (run)
 import Network.Wai.Handler.WebSockets (websocketsOr)
 import Network.WebSockets (ControlMessage (..), Message (..), acceptRequest, defaultConnectionOptions, receive, sendTextData, withPingThread)
+import RIO.File (withBinaryFileDurable)
 import Rapid (createRef, rapid, restart, start)
 import Servant.Server
 import Server (app)
@@ -39,8 +40,15 @@ update =
         start r "hotreload" $ run 8081 $ hotReloadServer reloadChan
 
         restart r "webserver" $ do
-            writeChan reloadChan ()
-            run 8080 $ app App{..} $ Just $ hotreloadJs "ws://localhost:8081"
+            withBinaryFileDurable "log" ReadWriteMode $ \h -> do
+                logOptions <- logOptionsHandle h True
+                withLogFunc logOptions
+                    $ \logFunction -> do
+                        run 8080
+                            $ app App{..}
+                            $ Just
+                            $ hotreloadJs "ws://localhost:8081"
+                        writeChan reloadChan ()
 
 hotReloadServer :: Chan () -> Application
 hotReloadServer reloadChan = websocketsOr defaultConnectionOptions hotreloader backup

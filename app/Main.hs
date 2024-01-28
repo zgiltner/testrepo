@@ -23,4 +23,6 @@ main = do
 
     wsGameStateTimer <- newTVarIO Nothing
 
-    run 8080 $ app App{..} Nothing
+    logOptions' <- logOptionsHandle stderr False
+    let logOptions = setLogUseTime True logOptions'
+    withLogFunc logOptions $ \logFunction -> run 8080 $ app App{..} Nothing

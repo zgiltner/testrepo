@@ -58,3 +58,5 @@ src/highlight.js
 src/style.css
 etc/scripts/stack-scripts.cabal
 better-cache/
+
+log
