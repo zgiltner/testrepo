@@ -40,6 +40,7 @@ update =
         start r "hotreload" $ run 8081 $ hotReloadServer reloadChan
 
         restart r "webserver" $ do
+            writeChan reloadChan ()
             withBinaryFileDurable "log" ReadWriteMode $ \h -> do
                 logOptions <- logOptionsHandle h True
                 withLogFunc logOptions
@@ -48,7 +49,6 @@ update =
                             $ app App{..}
                             $ Just
                             $ hotreloadJs "ws://localhost:8081"
-                        writeChan reloadChan ()
 
 hotReloadServer :: Chan () -> Application
 hotReloadServer reloadChan = websocketsOr defaultConnectionOptions hotreloader backup
