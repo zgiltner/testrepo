@@ -105,7 +105,7 @@ library:
   source-dirs: src
 
 executables:
-  hs-bomb-party-exe:
+  hs-bomb-party:
     main: Main.hs
     source-dirs: app
     ghc-options:

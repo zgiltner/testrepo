@@ -114,7 +114,7 @@ library
     , websockets
   default-language: Haskell2010
 
-executable hs-bomb-party-exe
+executable hs-bomb-party
   main-is: Main.hs
   other-modules:
       Paths_hs_bomb_party
