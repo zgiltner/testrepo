@@ -10,7 +10,7 @@ import qualified RIO.HashSet as HashSet
 import qualified RIO.Text as T
 import Server (app)
 import System.Environment (lookupEnv)
-import System.Random (mkStdGen)
+import System.Random (newStdGen)
 
 main :: IO ()
 main = do
@@ -18,12 +18,12 @@ main = do
     wordsSet <- HashSet.fromList . fmap CaseInsensitiveText . T.lines <$> readFileUtf8 wordsFile
     givenLettersFile <- fromMaybe "histogram.csv" <$> lookupEnv "GIVEN_LETTERS_FILE"
     givenLettersSet <- take 450 . fmap (CaseInsensitiveText . T.takeWhile (/= ',')) . T.lines <$> readFileUtf8 givenLettersFile
+    stdGen <- newStdGen
     wsGameState <- do
         let s =
                 GameStateUnStarted
                     $ initialGameState
-                        -- TODO: fix seed
-                        (mkStdGen 0)
+                        stdGen
                         wordsSet
                         givenLettersSet
         chan <- newTChanIO

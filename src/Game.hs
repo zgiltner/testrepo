@@ -68,7 +68,7 @@ initialPlayerState playerId name =
     PlayerState
         { id = playerId
         , name
-        , letters = HashSet.fromList $ fmap CaseInsensitiveChar ['b' .. 'z']
+        , letters = mempty
         , lives = 3
         , tries = 0
         }
@@ -88,7 +88,7 @@ instance HasSettings GameState where
             )
 
 initialGameState :: StdGen -> HashSet CaseInsensitiveText -> [CaseInsensitiveText] -> Settings
-initialGameState stdGen validWords givenLettersSet = Settings{players = mempty, secondsToGuess = 4, ..}
+initialGameState stdGen validWords givenLettersSet = Settings{players = mempty, secondsToGuess = 7, ..}
 
 startGame :: Settings -> GameState
 startGame s = case HashMap.toList s.players of
