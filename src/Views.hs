@@ -6,6 +6,7 @@ module Views where
 
 import RIO
 
+import App (Game)
 import CaseInsensitive (CaseInsensitiveChar (..))
 import CircularZipper (CircularZipper (..))
 import qualified CircularZipper as CZ
@@ -14,7 +15,6 @@ import Game (
     GameState (..),
     PlayerState (..),
     Settings (..),
-    StartedGameState (..),
     isGameOver,
     isPlayerAlive,
     isPlayerTurn,
@@ -61,11 +61,11 @@ gameStateUI ::
     ) =>
     Proxy api ->
     PlayerId ->
-    GameState ->
+    Game ->
     Html ()
-gameStateUI api me gs = div_ [id_ "gameState"] $ do
-    case gs of
-        GameStateUnStarted uGs -> do
+gameStateUI api me game = div_ [id_ "gameState"] $ do
+    case game of
+        Left settings -> do
             h1_ "Settings"
             div_ $ do
                 label_ [Lucid.for_ "secondsToGuess"] "Seconds per  guess"
@@ -76,10 +76,10 @@ gameStateUI api me gs = div_ [id_ "gameState"] $ do
                     , autocomplete_ "off"
                     , hxPostSafe_ $ safeLink api (Proxy @("settings" :> Post '[HTML] (Html ())))
                     , type_ "number"
-                    , value_ $ tshow uGs.secondsToGuess
+                    , value_ $ tshow settings.secondsToGuess
                     ]
             h1_ "Players"
-            ul_ $ for_ (HashMap.toList uGs.players) $ \(pId, mName) -> li_ $ do
+            ul_ $ for_ (HashMap.toList settings.players) $ \(pId, mName) -> li_ $ do
                 button_
                     [ type_ "button"
                     , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
@@ -95,9 +95,10 @@ gameStateUI api me gs = div_ [id_ "gameState"] $ do
                       , value_ $ fromMaybe (T.pack $ show $ getPlayerId pId) mName
                       , hxPostSafe_ $ safeLink api (Proxy @("name" :> Post '[HTML] (Html ())))
                       , hxVals_ [st|{"playerId":"#{UUID.toText $ getPlayerId pId}"}|]
+                      , autocomplete_ "off"
                       ]
                     <> [disabled_ "" | not isMe]
-            unless (me `HashMap.member` uGs.players)
+            unless (me `HashMap.member` settings.players)
                 $ button_
                     [ type_ "button"
                     , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
@@ -105,7 +106,7 @@ gameStateUI api me gs = div_ [id_ "gameState"] $ do
                     , hxTarget_ "#gameState"
                     ]
                     "Join Game"
-            unless (null uGs.players)
+            unless (null settings.players)
                 $ button_
                     [ type_ "button"
                     , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-green-500 text-white hover:bg-green-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
@@ -113,7 +114,7 @@ gameStateUI api me gs = div_ [id_ "gameState"] $ do
                     , hxTarget_ "#gameState"
                     ]
                     "Start Game"
-        GameStateStarted sGs -> do
+        Right gs -> do
             button_
                 [ type_ "button"
                 , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
@@ -122,25 +123,25 @@ gameStateUI api me gs = div_ [id_ "gameState"] $ do
                 , hxTarget_ "#gameState"
                 ]
                 "Start A New Game"
-            unless (isGameOver sGs)
+            unless (isGameOver gs)
                 $ div_
                     [ id_ "given-letters"
                     , class_ "text-2xl font-mono"
                     ]
-                $ toHtml sGs.givenLetters
+                $ toHtml gs.givenLetters
             ul_
                 [ id_ "player-states"
                 , class_ "space-y-3"
                 ]
                 $ do
-                    traverse_ (playerStateUI api me sGs) $ playerFirst me sGs.players
+                    traverse_ (playerStateUI api me gs) $ playerFirst me gs.players
 
 playerStateUI ::
     ( IsElem ("guess" :> Post '[HTML] (Html ())) api
     ) =>
     Proxy api ->
     PlayerId ->
-    StartedGameState ->
+    GameState ->
     PlayerState ->
     Html ()
 playerStateUI api me gs ps = do

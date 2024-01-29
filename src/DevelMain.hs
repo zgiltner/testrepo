@@ -6,7 +6,7 @@ import RIO
 
 import App (App (..))
 import qualified Data.HashSet as HashSet
-import Game (GameState (..), initialGameState)
+import Game (initialSettings)
 import Lucid (Html, script_, src_)
 import Network.HTTP.Types (status400)
 import Network.Wai (responseLBS)
@@ -27,8 +27,8 @@ update =
 
         wsGameState <- createRef @Text r "wsGameState" $ do
             let s =
-                    GameStateUnStarted
-                        $ initialGameState
+                    Left
+                        $ initialSettings
                             (mkStdGen 0)
                             (HashSet.fromList ["the", "quick", "brown", "fox", "friday"])
                             ["fri", "day"]

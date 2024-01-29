@@ -3,17 +3,19 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
-module App (AppM, App (..)) where
+module App (AppM, App (..), Game) where
 
 import RIO
 
-import Game (GameState)
+import Game (GameState, Settings)
 import Lucid (Html)
 
 type AppM = RIO App
 
+type Game = Either Settings GameState
+
 data App = App
-    { wsGameState :: TVar (GameState, TChan (Either GameState (Html ())))
+    { wsGameState :: TVar (Game, TChan (Either Game (Html ())))
     , wsGameStateTimer :: TVar (Maybe (Async ()))
     , logFunction :: LogFunc
     }

@@ -6,12 +6,10 @@
 module Game (
     GameState (..),
     Settings (..),
-    HasSettings (..),
-    StartedGameState (..),
     Move (..),
     PlayerState (..),
     initialPlayerState,
-    initialGameState,
+    initialSettings,
     startGame,
     mkMove,
     isGameOver,
@@ -39,21 +37,12 @@ data Settings = Settings
     , secondsToGuess :: Int
     }
 
-class HasSettings a where
-    settingsL :: Lens' a Settings
-
-instance HasSettings Settings where
-    settingsL = lens id $ \_ s -> s
-
-data StartedGameState = StartedGameState
+data GameState = GameState
     { players :: CircularZipper PlayerState
     , givenLetters :: CaseInsensitiveText
     , alreadyUsedWords :: HashSet CaseInsensitiveText
     , settings :: Settings
     }
-instance HasSettings StartedGameState where
-    settingsL = lens (.settings) $ \g settings -> g{settings}
-
 data PlayerState = PlayerState
     { id :: PlayerId
     , name :: Maybe Text
@@ -73,33 +62,19 @@ initialPlayerState playerId name =
         , tries = 0
         }
 
-data GameState = GameStateUnStarted Settings | GameStateStarted StartedGameState
+initialSettings :: StdGen -> HashSet CaseInsensitiveText -> [CaseInsensitiveText] -> Settings
+initialSettings stdGen validWords givenLettersSet = Settings{players = mempty, secondsToGuess = 7, ..}
 
-instance HasSettings GameState where
-    settingsL =
-        lens
-            ( \case
-                GameStateUnStarted s -> s
-                GameStateStarted g -> view settingsL g
-            )
-            ( \gs settings -> case gs of
-                GameStateUnStarted _ -> GameStateUnStarted settings
-                GameStateStarted g -> GameStateStarted $ g{settings}
-            )
-
-initialGameState :: StdGen -> HashSet CaseInsensitiveText -> [CaseInsensitiveText] -> Settings
-initialGameState stdGen validWords givenLettersSet = Settings{players = mempty, secondsToGuess = 7, ..}
-
-startGame :: Settings -> GameState
+startGame :: Settings -> Maybe GameState
 startGame s = case HashMap.toList s.players of
-    [] -> GameStateUnStarted s
+    [] -> Nothing
     (p : ps) ->
         let
             (givenLetters, stdGen) = randomGivenLetters s.stdGen s.givenLettersSet
             settings = s{stdGen}
          in
-            GameStateStarted
-                $ StartedGameState
+            Just
+                $ GameState
                     { alreadyUsedWords = mempty
                     , players = CZ.fromNonEmpty $ fmap (uncurry initialPlayerState) $ p :| ps
                     , ..
@@ -107,7 +82,7 @@ startGame s = case HashMap.toList s.players of
 
 data Move = Guess CaseInsensitiveText | TimeUp
 
-mkMove :: StartedGameState -> Move -> StartedGameState
+mkMove :: GameState -> Move -> GameState
 mkMove gs = \case
     Guess g
         | isValidGuess gs g ->
@@ -125,7 +100,7 @@ mkMove gs = \case
             { players = goToNextPlayer $ updateCurrent timeUpForPlayer gs.players
             }
 
-pickNewGivenLetters :: StartedGameState -> StartedGameState
+pickNewGivenLetters :: GameState -> GameState
 pickNewGivenLetters gs =
     let (givenLetters, stdGen) = randomGivenLetters gs.settings.stdGen gs.settings.givenLettersSet
      in gs{givenLetters, settings = gs.settings{stdGen}}
@@ -150,13 +125,13 @@ timeUpForPlayer ps = ps{lives = ps.lives - 1, tries = 0}
 goToNextPlayer :: CircularZipper PlayerState -> CircularZipper PlayerState
 goToNextPlayer z = fromMaybe z $ findRight isPlayerAlive z
 
-isGameOver :: StartedGameState -> Bool
+isGameOver :: GameState -> Bool
 isGameOver gs = (== 1) $ length $ filter isPlayerAlive $ toList gs.players
 
 isPlayerAlive :: PlayerState -> Bool
 isPlayerAlive ps = ps.lives > 0
 
-isValidGuess :: StartedGameState -> CaseInsensitiveText -> Bool
+isValidGuess :: GameState -> CaseInsensitiveText -> Bool
 isValidGuess gs g =
     gs.givenLetters
         `CaseInsensitive.isInfixOf` g

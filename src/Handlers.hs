@@ -8,7 +8,7 @@ module Handlers where
 
 import RIO
 
-import App (App (..), AppM)
+import App (App (..), AppM, Game)
 import CaseInsensitive (CaseInsensitiveText)
 import qualified CircularZipper as CZ
 import Data.Aeson (FromJSON, eitherDecode)
@@ -18,7 +18,6 @@ import Game (
     Move (..),
     PlayerState (..),
     Settings (..),
-    StartedGameState (..),
     mkMove,
     startGame,
  )
@@ -68,7 +67,7 @@ home api mHotreload me = do
                 ]
             $ gameStateUI api me gs
 
-updateGameState :: (GameState -> GameState) -> AppM GameState
+updateGameState :: (Game -> Game) -> AppM Game
 updateGameState f = do
     a <- ask
     liftIO $ atomically $ do
@@ -86,7 +85,7 @@ join ::
 join api me = do
     gs <- updateGameState
         $ \case
-            GameStateUnStarted uGs -> GameStateUnStarted uGs{players = HashMap.insert me Nothing uGs.players}
+            Left settings -> Left $ settings{players = HashMap.insert me Nothing settings.players}
             x -> x
     pure $ gameStateUI api me gs
 
@@ -106,7 +105,7 @@ leave ::
 leave api me p = do
     gs <- updateGameState
         $ \case
-            GameStateUnStarted uGs -> GameStateUnStarted uGs{players = HashMap.delete p.playerId uGs.players}
+            Left settings -> Left $ settings{players = HashMap.delete p.playerId settings.players}
             x -> x
     pure $ gameStateUI api me gs
 
@@ -126,7 +125,7 @@ settings ::
 settings api me p = do
     gs <- updateGameState
         $ \case
-            GameStateUnStarted uGs -> GameStateUnStarted uGs{secondsToGuess = p.secondsToGuess}
+            Left settings -> Left $ settings{secondsToGuess = p.secondsToGuess}
             x -> x
     pure $ gameStateUI api me gs
 
@@ -146,7 +145,7 @@ name ::
 name api me p = do
     gs <- updateGameState
         $ \case
-            GameStateUnStarted uGs -> GameStateUnStarted uGs{players = HashMap.update (const $ Just $ Just p.name) p.playerId uGs.players}
+            Left settings -> Left $ settings{players = HashMap.update (const $ Just $ Just p.name) p.playerId settings.players}
             x -> x
     pure $ gameStateUI api me gs
 
@@ -158,11 +157,11 @@ start ::
     AppM (Html ())
 start api me = do
     gs <- updateGameState $ \case
-        GameStateUnStarted uGs -> startGame uGs
+        Left settings -> maybe (Left settings) Right $ startGame settings
         x -> x
     a <- ask
     case gs of
-        GameStateStarted _ -> startTimer a
+        Right _ -> startTimer a
         _ -> pure ()
     pure $ gameStateUI api me gs
 
@@ -175,8 +174,8 @@ startOver ::
 startOver api me = do
     stopTimer =<< ask
     gs <- updateGameState $ \case
-        GameStateStarted gss ->
-            GameStateUnStarted gss.settings
+        Right gs ->
+            Left gs.settings
         x -> x
     pure $ gameStateUI api me gs
 
@@ -194,10 +193,10 @@ guess ::
     AppM (Html ())
 guess api me p = do
     gs <- updateGameState $ \case
-        GameStateStarted gs -> GameStateStarted $ mkMove gs $ Guess p.guess
+        Right gs -> Right $ mkMove gs $ Guess p.guess
         x -> x
     case gs of
-        GameStateStarted gsS -> do
+        Right gsS -> do
             a <- ask
 
             when ((CZ.current gsS.players).tries == 0) $ do
