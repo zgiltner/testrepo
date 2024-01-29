@@ -25,6 +25,7 @@ import CaseInsensitive (CaseInsensitiveChar (..), CaseInsensitiveText)
 import qualified CaseInsensitive
 import CircularZipper (CircularZipper (..), findRight, updateCurrent)
 import qualified CircularZipper as CZ
+import qualified RIO.HashMap as HashMap
 import qualified RIO.HashSet as HashSet
 import RIO.List.Partial ((!!))
 import System.Random (StdGen, randomR)
@@ -34,7 +35,7 @@ data Settings = Settings
     { validWords :: HashSet CaseInsensitiveText
     , givenLettersSet :: [CaseInsensitiveText]
     , stdGen :: StdGen
-    , players :: HashSet PlayerId
+    , players :: HashMap PlayerId (Maybe Text)
     , secondsToGuess :: Int
     }
 
@@ -55,16 +56,18 @@ instance HasSettings StartedGameState where
 
 data PlayerState = PlayerState
     { id :: PlayerId
+    , name :: Maybe Text
     , letters :: HashSet CaseInsensitiveChar
     , lives :: Int
     , tries :: Int
     }
     deriving (Show)
 
-initialPlayerState :: PlayerId -> PlayerState
-initialPlayerState playerId =
+initialPlayerState :: PlayerId -> Maybe Text -> PlayerState
+initialPlayerState playerId name =
     PlayerState
         { id = playerId
+        , name
         , letters = HashSet.fromList $ fmap CaseInsensitiveChar ['b' .. 'z']
         , lives = 3
         , tries = 0
@@ -88,7 +91,7 @@ initialGameState :: StdGen -> HashSet CaseInsensitiveText -> [CaseInsensitiveTex
 initialGameState stdGen validWords givenLettersSet = Settings{players = mempty, secondsToGuess = 4, ..}
 
 startGame :: Settings -> GameState
-startGame s = case toList s.players of
+startGame s = case HashMap.toList s.players of
     [] -> GameStateUnStarted s
     (p : ps) ->
         let
@@ -98,7 +101,7 @@ startGame s = case toList s.players of
             GameStateStarted
                 $ StartedGameState
                     { alreadyUsedWords = mempty
-                    , players = CZ.fromNonEmpty $ fmap initialPlayerState $ p :| ps
+                    , players = CZ.fromNonEmpty $ fmap (uncurry initialPlayerState) $ p :| ps
                     , ..
                     }
 

@@ -12,7 +12,6 @@ import App (App (..), AppM)
 import CaseInsensitive (CaseInsensitiveText)
 import qualified CircularZipper as CZ
 import Data.Aeson (FromJSON, eitherDecode)
-import qualified Data.HashSet as HashSet
 import qualified Data.Text.Lazy as TL
 import Game (
     GameState (..),
@@ -28,6 +27,7 @@ import Lucid.Base (makeAttribute)
 import Lucid.Htmx
 import qualified Network.WebSockets as WS
 import OrphanInstances ()
+import qualified RIO.HashMap as HashMap
 import Servant
 import Servant.API.WebSocket (WebSocket)
 import Servant.HTML.Lucid
@@ -41,6 +41,7 @@ type APIConstraints api =
     , IsElem ("join" :> Post '[HTML] (Html ())) api
     , IsElem ("start" :> Post '[HTML] (Html ())) api
     , IsElem ("settings" :> Post '[HTML] (Html ())) api
+    , IsElem ("name" :> Post '[HTML] (Html ())) api
     , IsElem ("start-over" :> Post '[HTML] (Html ())) api
     , IsElem ("guess" :> Post '[HTML] (Html ())) api
     )
@@ -85,7 +86,7 @@ join ::
 join api me = do
     gs <- updateGameState
         $ \case
-            GameStateUnStarted uGs -> GameStateUnStarted uGs{players = HashSet.insert me uGs.players}
+            GameStateUnStarted uGs -> GameStateUnStarted uGs{players = HashMap.insert me Nothing uGs.players}
             x -> x
     pure $ gameStateUI api me gs
 
@@ -105,7 +106,7 @@ leave ::
 leave api me p = do
     gs <- updateGameState
         $ \case
-            GameStateUnStarted uGs -> GameStateUnStarted uGs{players = HashSet.delete p.playerId uGs.players}
+            GameStateUnStarted uGs -> GameStateUnStarted uGs{players = HashMap.delete p.playerId uGs.players}
             x -> x
     pure $ gameStateUI api me gs
 
@@ -126,6 +127,26 @@ settings api me p = do
     gs <- updateGameState
         $ \case
             GameStateUnStarted uGs -> GameStateUnStarted uGs{secondsToGuess = p.secondsToGuess}
+            x -> x
+    pure $ gameStateUI api me gs
+
+data NamePost = NamePost
+    {playerId :: PlayerId, name :: Text}
+    deriving stock (Show, Generic)
+
+instance FromForm NamePost
+
+name ::
+    ( APIConstraints api
+    ) =>
+    Proxy api ->
+    PlayerId ->
+    NamePost ->
+    AppM (Html ())
+name api me p = do
+    gs <- updateGameState
+        $ \case
+            GameStateUnStarted uGs -> GameStateUnStarted uGs{players = HashMap.update (const $ Just $ Just p.name) p.playerId uGs.players}
             x -> x
     pure $ gameStateUI api me gs
 

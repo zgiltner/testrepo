@@ -24,6 +24,7 @@ import qualified Lucid
 import Lucid.Base (makeAttribute)
 import Lucid.Htmx
 import Lucid.Htmx.Servant (hxPostSafe_)
+import qualified RIO.HashMap as HashMap
 import qualified RIO.HashSet as HashSet
 import qualified RIO.Text as T
 import Servant
@@ -53,6 +54,7 @@ gameStateUI ::
     ( IsElem ("leave" :> Post '[HTML] (Html ())) api
     , IsElem ("join" :> Post '[HTML] (Html ())) api
     , IsElem ("settings" :> Post '[HTML] (Html ())) api
+    , IsElem ("name" :> Post '[HTML] (Html ())) api
     , IsElem ("start" :> Post '[HTML] (Html ())) api
     , IsElem ("start-over" :> Post '[HTML] (Html ())) api
     , IsElem ("guess" :> Post '[HTML] (Html ())) api
@@ -70,24 +72,32 @@ gameStateUI api me gs = div_ [id_ "gameState"] $ do
                 input_
                     [ id_ "secondsToGuess"
                     , name_ "secondsToGuess"
-                    , class_ "border-2 caret-blue-900 "
+                    , class_ "border-2 caret-blue-900"
                     , autocomplete_ "off"
                     , hxPostSafe_ $ safeLink api (Proxy @("settings" :> Post '[HTML] (Html ())))
                     , type_ "number"
                     , value_ $ tshow uGs.secondsToGuess
                     ]
             h1_ "Players"
-            ul_ $ for_ uGs.players $ \(PlayerId i) -> li_ $ do
+            ul_ $ for_ (HashMap.toList uGs.players) $ \(pId, mName) -> li_ $ do
                 button_
                     [ type_ "button"
                     , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
                     , hxPostSafe_ $ safeLink api (Proxy @("leave" :> Post '[HTML] (Html ())))
                     , hxTarget_ "#gameState"
-                    , hxVals_ [st|{"playerId":"#{UUID.toText i}"}|]
+                    , hxVals_ [st|{"playerId":"#{UUID.toText $ getPlayerId pId}"}|]
                     ]
                     "x"
-                toHtml $ T.pack $ show i
-            unless (me `elem` uGs.players)
+                let isMe = pId == me
+                input_
+                    $ [ class_ $ "w-1/3 border-2 caret-blue-900" <> (if isMe then "" else " bg-slate-300")
+                      , name_ "name"
+                      , value_ $ fromMaybe (T.pack $ show $ getPlayerId pId) mName
+                      , hxPostSafe_ $ safeLink api (Proxy @("name" :> Post '[HTML] (Html ())))
+                      , hxVals_ [st|{"playerId":"#{UUID.toText $ getPlayerId pId}"}|]
+                      ]
+                    <> [disabled_ "" | not isMe]
+            unless (me `HashMap.member` uGs.players)
                 $ button_
                     [ type_ "button"
                     , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
@@ -139,6 +149,7 @@ playerStateUI api me gs ps = do
         , class_ $ "p-2 rounded-lg " <> bg <> " " <> outline
         ]
         $ do
+            h1_ $ maybe (toHtml $ T.pack $ show $ getPlayerId ps.id) toHtml ps.name
             if isPlayerAlive ps
                 then
                     if isGameOver gs
@@ -173,10 +184,15 @@ guessInput v isMe isMyTurn invaldGuess playerId = do
         ( [ id_ $ playerInputId isMe playerId
           , name_ "guess"
           , class_
-                $ "border-2 caret-blue-900 "
-                <> if invaldGuess
-                    then "shake"
-                    else ""
+                $ "border-2 caret-blue-900"
+                <> ( if invaldGuess
+                        then " shake"
+                        else ""
+                   )
+                <> ( if isActivePlayersTurn
+                        then ""
+                        else " bg-slate-300"
+                   )
           , value_ v
           , autocomplete_ "off"
           ]
