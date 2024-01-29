@@ -14,12 +14,15 @@ import System.Random (mkStdGen)
 
 main :: IO ()
 main = do
-    wordsSet <- HashSet.fromList . fmap CaseInsensitiveText . T.lines <$> readFileUtf8 "words.txt"
-    givenLettersSet <- take 450 . fmap (CaseInsensitiveText . T.takeWhile (/= ',')) . T.lines <$> readFileUtf8 "histogram.csv"
+    wordsFile <- fromMaybe "words.txt" <$> lookupEnv "WORDS_FILE"
+    wordsSet <- HashSet.fromList . fmap CaseInsensitiveText . T.lines <$> readFileUtf8 wordsFile
+    givenLettersFile <- fromMaybe "histogram.csv" <$> lookupEnv "GIVEN_LETTERS_FILE"
+    givenLettersSet <- take 450 . fmap (CaseInsensitiveText . T.takeWhile (/= ',')) . T.lines <$> readFileUtf8 givenLettersFile
     wsGameState <- do
         let s =
                 GameStateUnStarted
                     $ initialGameState
+                        -- TODO: fix seed
                         (mkStdGen 0)
                         wordsSet
                         givenLettersSet

@@ -7,3 +7,7 @@ ghcid-devel: ## Run the server in fast development mode. See DevelMain for detai
 	ghcid \
 	    --command "stack ghci hs-bomb-party:lib" \
 	    --test "DevelMain.update"
+
+.PHONY: push-image
+push-image: ## Build the container image and push it as latest to docker
+	docker build -t hs-bomb-party . --tag z0isch/hs-bomb-party:latest && docker push z0isch/hs-bomb-party:latest
