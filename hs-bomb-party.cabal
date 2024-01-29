@@ -36,6 +36,7 @@ library
       Timer
       Views
       WithPlayerApi
+      WordHelpers
   other-modules:
       Paths_hs_bomb_party
   autogen-modules:
@@ -85,7 +86,9 @@ library
       aeson
     , async
     , base >=4.7 && <5
+    , binary
     , bytestring
+    , conduit
     , containers
     , cookie
     , hashable
@@ -165,7 +168,9 @@ executable hs-bomb-party
       aeson
     , async
     , base
+    , binary
     , bytestring
+    , conduit
     , containers
     , cookie
     , hashable
@@ -247,7 +252,9 @@ test-suite hs-bomb-party-test
       aeson
     , async
     , base
+    , binary
     , bytestring
+    , conduit
     , containers
     , cookie
     , hashable

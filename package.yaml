@@ -23,7 +23,9 @@ dependencies:
   - aeson
   - async
   - base >= 4.7 && < 5
+  - binary
   - bytestring
+  - conduit
   - containers
   - cookie
   - hashable

@@ -1,4 +1,4 @@
-module CaseInsensitive (CaseInsensitiveText, CaseInsensitiveChar (..), caseInsensitiveLetters, isInfixOf) where
+module CaseInsensitive (CaseInsensitiveText (..), CaseInsensitiveChar (..), caseInsensitiveLetters, isInfixOf) where
 
 import RIO
 
