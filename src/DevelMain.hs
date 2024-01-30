@@ -2,10 +2,11 @@
 
 module DevelMain (update) where
 
-import RIO
+import CustomPrelude
 
 import App (App (..))
 import qualified Data.HashSet as HashSet
+import Data.UUID.V4 (nextRandom)
 import Game (initialSettings)
 import Lucid (Html, script_, src_)
 import Network.HTTP.Types (status400)
@@ -32,8 +33,9 @@ update =
                             (mkStdGen 0)
                             (HashSet.fromList ["the", "quick", "brown", "fox", "friday"])
                             ["fri", "day"]
+            stateId <- nextRandom
             chan <- newTChanIO
-            newTVarIO (s, chan)
+            newTVarIO ((stateId, s), chan)
 
         wsGameStateTimer <- createRef @Text r "wsGameStateTimer" $ newTVarIO Nothing
 

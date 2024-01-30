@@ -3,7 +3,7 @@
 
 module WithPlayerApi (PlayerId (..), API, withPlayerApi) where
 
-import RIO
+import CustomPrelude
 
 import Control.Monad.Error.Class (MonadError)
 import Data.Aeson (FromJSON)
@@ -112,7 +112,7 @@ instance {-# OVERLAPPABLE #-} (MonadError ServerError m) => PlayerIdRedirect (m 
 
 instance PlayerIdRedirect (RIO app m) where
     redirect l =
-        RIO.throwM
+        throwM
             $ err302
                 { errHeaders =
                     ("Location", encodeUtf8 $ T.pack $ show l) : errHeaders err302

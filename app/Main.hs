@@ -1,6 +1,6 @@
 module Main (main) where
 
-import RIO
+import CustomPrelude
 
 import App (App (..))
 import CaseInsensitive (CaseInsensitiveText (..))

@@ -1,6 +1,6 @@
 module WordHelpers (main) where
 
-import RIO
+import CustomPrelude
 
 import Conduit
 import qualified Data.Conduit.Combinators as Conduit

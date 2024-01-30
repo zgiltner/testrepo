@@ -10,7 +10,7 @@ module CircularZipper (
     findRight,
 ) where
 
-import RIO hiding (lefts, rights)
+import CustomPrelude hiding (lefts, rights)
 
 import Data.Coerce (coerce)
 import Data.List.NonEmpty.Zipper (Zipper)

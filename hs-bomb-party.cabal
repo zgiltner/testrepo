@@ -28,6 +28,7 @@ library
       App
       CaseInsensitive
       CircularZipper
+      CustomPrelude
       DevelMain
       Game
       Handlers
@@ -44,43 +45,43 @@ library
   hs-source-dirs:
       src
   default-extensions:
-      OverloadedStrings
-      LambdaCase
-      GADTSyntax
-      RankNTypes
-      ScopedTypeVariables
-      DeriveGeneric
-      TupleSections
       BangPatterns
-      MultiParamTypeClasses
-      FlexibleInstances
-      FlexibleContexts
-      MultiWayIf
-      TypeFamilies
-      TypeOperators
-      TypeApplications
-      FunctionalDependencies
-      DisambiguateRecordFields
-      MonadComprehensions
       BinaryLiterals
-      RecursiveDo
-      ParallelListComp
-      PartialTypeSignatures
-      RecordWildCards
-      PatternSynonyms
+      ConstraintKinds
+      DeriveAnyClass
+      DeriveFoldable
+      DeriveFunctor
+      DeriveGeneric
+      DeriveTraversable
+      DerivingStrategies
+      DisambiguateRecordFields
       EmptyCase
+      ExplicitNamespaces
+      FlexibleContexts
+      FlexibleInstances
+      FunctionalDependencies
+      GADTSyntax
+      GeneralizedNewtypeDeriving
       InstanceSigs
       KindSignatures
-      DeriveFunctor
-      DeriveFoldable
-      DeriveTraversable
-      ConstraintKinds
-      ExplicitNamespaces
+      LambdaCase
+      MonadComprehensions
+      MultiParamTypeClasses
+      MultiWayIf
       NamedFieldPuns
-      DerivingStrategies
-      GeneralizedNewtypeDeriving
-      DeriveAnyClass
       NoImplicitPrelude
+      OverloadedStrings
+      ParallelListComp
+      PartialTypeSignatures
+      PatternSynonyms
+      RankNTypes
+      RecordWildCards
+      RecursiveDo
+      ScopedTypeVariables
+      TupleSections
+      TypeApplications
+      TypeFamilies
+      TypeOperators
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       aeson
@@ -99,6 +100,8 @@ library
     , mtl
     , network-uri
     , nonempty-zipper
+    , optics-core
+    , optics-th
     , random
     , rapid
     , rio
@@ -126,43 +129,43 @@ executable hs-bomb-party
   hs-source-dirs:
       app
   default-extensions:
-      OverloadedStrings
-      LambdaCase
-      GADTSyntax
-      RankNTypes
-      ScopedTypeVariables
-      DeriveGeneric
-      TupleSections
       BangPatterns
-      MultiParamTypeClasses
-      FlexibleInstances
-      FlexibleContexts
-      MultiWayIf
-      TypeFamilies
-      TypeOperators
-      TypeApplications
-      FunctionalDependencies
-      DisambiguateRecordFields
-      MonadComprehensions
       BinaryLiterals
-      RecursiveDo
-      ParallelListComp
-      PartialTypeSignatures
-      RecordWildCards
-      PatternSynonyms
+      ConstraintKinds
+      DeriveAnyClass
+      DeriveFoldable
+      DeriveFunctor
+      DeriveGeneric
+      DeriveTraversable
+      DerivingStrategies
+      DisambiguateRecordFields
       EmptyCase
+      ExplicitNamespaces
+      FlexibleContexts
+      FlexibleInstances
+      FunctionalDependencies
+      GADTSyntax
+      GeneralizedNewtypeDeriving
       InstanceSigs
       KindSignatures
-      DeriveFunctor
-      DeriveFoldable
-      DeriveTraversable
-      ConstraintKinds
-      ExplicitNamespaces
+      LambdaCase
+      MonadComprehensions
+      MultiParamTypeClasses
+      MultiWayIf
       NamedFieldPuns
-      DerivingStrategies
-      GeneralizedNewtypeDeriving
-      DeriveAnyClass
       NoImplicitPrelude
+      OverloadedStrings
+      ParallelListComp
+      PartialTypeSignatures
+      PatternSynonyms
+      RankNTypes
+      RecordWildCards
+      RecursiveDo
+      ScopedTypeVariables
+      TupleSections
+      TypeApplications
+      TypeFamilies
+      TypeOperators
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
@@ -182,6 +185,8 @@ executable hs-bomb-party
     , mtl
     , network-uri
     , nonempty-zipper
+    , optics-core
+    , optics-th
     , random
     , rapid
     , rio
@@ -210,43 +215,43 @@ test-suite hs-bomb-party-test
   hs-source-dirs:
       test
   default-extensions:
-      OverloadedStrings
-      LambdaCase
-      GADTSyntax
-      RankNTypes
-      ScopedTypeVariables
-      DeriveGeneric
-      TupleSections
       BangPatterns
-      MultiParamTypeClasses
-      FlexibleInstances
-      FlexibleContexts
-      MultiWayIf
-      TypeFamilies
-      TypeOperators
-      TypeApplications
-      FunctionalDependencies
-      DisambiguateRecordFields
-      MonadComprehensions
       BinaryLiterals
-      RecursiveDo
-      ParallelListComp
-      PartialTypeSignatures
-      RecordWildCards
-      PatternSynonyms
+      ConstraintKinds
+      DeriveAnyClass
+      DeriveFoldable
+      DeriveFunctor
+      DeriveGeneric
+      DeriveTraversable
+      DerivingStrategies
+      DisambiguateRecordFields
       EmptyCase
+      ExplicitNamespaces
+      FlexibleContexts
+      FlexibleInstances
+      FunctionalDependencies
+      GADTSyntax
+      GeneralizedNewtypeDeriving
       InstanceSigs
       KindSignatures
-      DeriveFunctor
-      DeriveFoldable
-      DeriveTraversable
-      ConstraintKinds
-      ExplicitNamespaces
+      LambdaCase
+      MonadComprehensions
+      MultiParamTypeClasses
+      MultiWayIf
       NamedFieldPuns
-      DerivingStrategies
-      GeneralizedNewtypeDeriving
-      DeriveAnyClass
       NoImplicitPrelude
+      OverloadedStrings
+      ParallelListComp
+      PartialTypeSignatures
+      PatternSynonyms
+      RankNTypes
+      RecordWildCards
+      RecursiveDo
+      ScopedTypeVariables
+      TupleSections
+      TypeApplications
+      TypeFamilies
+      TypeOperators
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
@@ -269,6 +274,8 @@ test-suite hs-bomb-party-test
     , mtl
     , network-uri
     , nonempty-zipper
+    , optics-core
+    , optics-th
     , random
     , rapid
     , rio

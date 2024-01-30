@@ -1,6 +1,6 @@
 module CaseInsensitive (CaseInsensitiveText (..), CaseInsensitiveChar (..), caseInsensitiveLetters, isInfixOf) where
 
-import RIO
+import CustomPrelude
 
 import qualified Data.Char as C
 import Data.Coerce (coerce)
