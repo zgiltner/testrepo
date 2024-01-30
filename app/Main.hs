@@ -4,7 +4,8 @@ import CustomPrelude
 
 import App (App (..))
 import CaseInsensitive (CaseInsensitiveText (..))
-import Game (GameState (..), initialSettings)
+import Data.UUID.V4 (nextRandom)
+import Game (initialSettings)
 import Network.Wai.Handler.Warp
 import qualified RIO.HashSet as HashSet
 import qualified RIO.Text as T
@@ -21,6 +22,7 @@ main = do
     givenLettersSet <- take 450 . fmap (CaseInsensitiveText . T.takeWhile (/= ',')) . T.lines <$> readFileUtf8 givenLettersFile
 
     stdGen <- newStdGen
+    stateId <- nextRandom
 
     wsGameState <- do
         let s =
@@ -30,7 +32,7 @@ main = do
                         wordsSet
                         givenLettersSet
         chan <- newTChanIO
-        newTVarIO (s, chan)
+        newTVarIO ((stateId, s), chan)
 
     wsGameStateTimer <- newTVarIO Nothing
 
