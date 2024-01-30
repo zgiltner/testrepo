@@ -51,11 +51,9 @@ data PlayerState = PlayerState
     , letters :: HashSet CaseInsensitiveChar
     , lives :: Int
     , tries :: Int
+    , lastWord :: Maybe CaseInsensitiveText
     }
     deriving (Show, Generic)
-
-foo :: Settings -> HashMap PlayerId (Maybe Text)
-foo s = s ^. #players
 
 initialPlayerState :: PlayerId -> Maybe Text -> PlayerState
 initialPlayerState playerId name =
@@ -65,6 +63,7 @@ initialPlayerState playerId name =
         , letters = mempty
         , lives = 3
         , tries = 0
+        , lastWord = Nothing
         }
 
 initialSettings :: StdGen -> HashSet CaseInsensitiveText -> [CaseInsensitiveText] -> Settings
@@ -103,10 +102,6 @@ mkMove gs = \case
         | otherwise -> gs & #players %~ updateCurrent (#tries %~ (+ 1))
     TimeUp -> gs & #players %~ goToNextPlayer . updateCurrent timeUpForPlayer
 
--- gs
---     { players = goToNextPlayer $ updateCurrent timeUpForPlayer gs.players
---     }
-
 pickNewGivenLetters :: GameState -> GameState
 pickNewGivenLetters gs =
     let (givenLetters, stdGen) = randomGivenLetters (gs ^. #settings % #stdGen) (gs ^. #settings % #givenLettersSet)
@@ -123,6 +118,7 @@ validGuessForPlayer g ps =
         { lives = if hasAllLetters then ps ^. #lives + 1 else ps ^. #lives
         , letters = if hasAllLetters then mempty else letters
         , tries = 0
+        , lastWord = Just g
         }
   where
     hasAllLetters = (== 26) $ HashSet.size letters
@@ -132,7 +128,7 @@ timeUpForPlayer :: PlayerState -> PlayerState
 timeUpForPlayer ps = ps{lives = ps ^. #lives - 1, tries = 0}
 
 goToNextPlayer :: CircularZipper PlayerState -> CircularZipper PlayerState
-goToNextPlayer z = fromMaybe z $ findRight isPlayerAlive z
+goToNextPlayer z = updateCurrent (set #lastWord Nothing) $ fromMaybe z $ findRight isPlayerAlive z
 
 isGameOver :: GameState -> Bool
 isGameOver gs = (== 1) $ length $ filter isPlayerAlive $ toList $ gs ^. #players

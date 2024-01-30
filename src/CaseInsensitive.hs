@@ -11,7 +11,7 @@ import qualified RIO.HashSet as HashSet
 import Web.HttpApiData (FromHttpApiData)
 import Web.Internal.HttpApiData (FromHttpApiData (..))
 
-newtype CaseInsensitiveText = CaseInsensitiveText Text
+newtype CaseInsensitiveText = CaseInsensitiveText {getCaseInsensitiveText :: Text}
     deriving stock (Show, Generic)
     deriving newtype (IsString, ToHtml)
 

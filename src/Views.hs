@@ -7,7 +7,7 @@ module Views where
 import CustomPrelude
 
 import App (Game)
-import CaseInsensitive (CaseInsensitiveChar (..))
+import CaseInsensitive (CaseInsensitiveChar (..), CaseInsensitiveText (..))
 import CircularZipper (CircularZipper (..))
 import qualified CircularZipper as CZ
 import Data.UUID (UUID)
@@ -207,7 +207,12 @@ playerStateUI api me stateId gs ps = do
                                 , hxTarget_ "#gameState"
                                 ]
                                 $ do
-                                    guessInput "" (me == ps.id) (isPlayerTurn gs.players ps) (ps.tries > 0) ps.id
+                                    guessInput
+                                        (maybe "" getCaseInsensitiveText ps.lastWord)
+                                        (me == ps.id)
+                                        (isPlayerTurn gs.players ps)
+                                        (ps.tries > 0)
+                                        ps.id
                 else h1_ [class_ "text-center text-2xl"] "☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️"
   where
     outline =
