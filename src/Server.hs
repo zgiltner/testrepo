@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
@@ -37,7 +38,7 @@ type StateChangeAPI =
                 :<|> "start-over" :> Post '[HTML] (Html ())
                 :<|> "guess"
                     :> ReqBody '[FormUrlEncoded] Handlers.GuessPost
-                    :> Post '[HTML] (Html ())
+                    :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ()))
            )
 
 api :: Proxy API
@@ -46,19 +47,21 @@ api = Proxy
 stateChangeApi :: Proxy StateChangeAPI
 stateChangeApi = Proxy
 
-withPlayerApi :: Proxy (WithPlayerApi.API API)
-withPlayerApi = Proxy
+totalApi :: Proxy ("static" :> Raw :<|> WithPlayerApi.API API)
+totalApi = Proxy
 
-withPlayerApiServer :: App -> Maybe (Html ()) -> Server (WithPlayerApi.API API)
-withPlayerApiServer a mHotReload =
+totalApiServer :: App -> Maybe (Html ()) -> Server ("static" :> Raw :<|> WithPlayerApi.API API)
+totalApiServer a mHotReload =
     hoistServer
-        withPlayerApi
+        totalApi
         ( Servant.Handler . ExceptT . handleRIOServerErrors . fmap Right . runRIO a . logErrors
         )
-        $ WithPlayerApi.withPlayerApi
+        $ static
+        :<|> WithPlayerApi.withPlayerApi
             api
             (server mHotReload)
   where
+    static = serveDirectoryWebApp $ a ^. #staticDir
     logErrors = handleAny $ \e -> logError (displayShow e) >> throwM e
     -- Lift thrown ServerErrors into Left
     handleRIOServerErrors = handle @IO @ServerError (pure . Left)
@@ -80,4 +83,4 @@ stateChangeServer playerId stateId =
         :<|> Handlers.guess stateChangeApi playerId stateId
 
 app :: App -> Maybe (Html ()) -> Application
-app a = serve withPlayerApi . withPlayerApiServer a
+app a = serve totalApi . totalApiServer a
