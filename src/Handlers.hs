@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
 module Handlers where
@@ -10,7 +11,8 @@ import CustomPrelude
 import App (App (..), AppM, Game)
 import CaseInsensitive (CaseInsensitiveText)
 import qualified CircularZipper as CZ
-import Data.Aeson (FromJSON, eitherDecode)
+import qualified Data.Aeson as Aeson
+import Data.Aeson.QQ (aesonQQ)
 import qualified Data.Text.Lazy as TL
 import Data.UUID (UUID)
 import Data.UUID.V4 (nextRandom)
@@ -27,10 +29,12 @@ import Lucid.Base (makeAttribute)
 import Lucid.Htmx
 import qualified Network.WebSockets as WS
 import OrphanInstances ()
+import qualified RIO.ByteString.Lazy as BSL
 import qualified RIO.HashMap as HashMap
 import Servant
 import Servant.API.WebSocket (WebSocket)
 import Servant.HTML.Lucid
+import Text.Shakespeare.Text (st)
 import Timer (restartTimer, startTimer, stopTimer)
 import Views (gameStateUI, guessInput, sharedHead)
 import Web.FormUrlEncoded (FromForm (..))
@@ -76,7 +80,7 @@ type APIConstraints api =
     , IsElem
         ( Capture "stateId" UUID
             :> "guess"
-            :> Post '[HTML] (Html ())
+            :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ()))
         )
         api
     )
@@ -97,7 +101,7 @@ home api mHotreload me = do
         body_
             $ div_
                 [ id_ "ws"
-                , hxExt_ "ws"
+                , hxExt_ "ws,transform-ws-response"
                 , makeAttribute "ws-connect" $ "/" <> toUrlPiece (safeLink api (Proxy @("ws" :> WebSocket)))
                 , class_ "container mx-auto px-4 py-4"
                 ]
@@ -238,26 +242,29 @@ guess ::
     PlayerId ->
     UUID ->
     GuessPost ->
-    AppM (Html ())
+    AppM (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ()))
 guess api me stateId p = do
     gs <- updateGameState stateId $ \case
         Right gs -> Right $ mkMove gs $ Guess $ p ^. #guess
         x -> x
-    case gs of
+    mSound <- case gs of
         Right gsS -> do
             a <- ask
 
-            when (CZ.current (gsS ^. #players) ^. #tries == 0) $ do
-                -- It's the next players turn so let's restart the timer
-                restartTimer a
-        _ -> pure ()
-    pure $ gameStateUI api me stateId gs
+            if CZ.current (gsS ^. #players) ^. #tries == 0
+                then -- It's the next players turn
+                do
+                    restartTimer a
+                    pure $ Just "correctGuess"
+                else pure $ Just "wrongGuess"
+        _ -> pure mempty
+    pure $ addHeader (fromMaybe "" mSound) $ gameStateUI api me stateId gs
 
 newtype WsMsg = WsMsg
     { guess :: Text
     }
     deriving stock (Show, Generic)
-    deriving anyclass (FromJSON)
+    deriving anyclass (Aeson.FromJSON)
 
 ws ::
     ( APIConstraints api
@@ -282,7 +289,7 @@ ws api me c = do
             liftIO (WS.receive c) >>= \case
                 WS.ControlMessage (WS.Close _ _) -> pure ()
                 WS.DataMessage _ _ _ (WS.Text msgString _) -> do
-                    case eitherDecode @WsMsg msgString of
+                    case Aeson.eitherDecode @WsMsg msgString of
                         Left err -> logError $ "WebSocket received bad json: " <> fromString err
                         Right msg -> do
                             atomically $ do
@@ -297,9 +304,30 @@ ws api me c = do
                 ((currStateId, _), _) <- readTVar $ a ^. #wsGameState
                 pure $ if stateId == currStateId then Just (stateId, msg) else Nothing
 
-            liftIO $ WS.sendTextData @Text c $ TL.toStrict $ renderText $ case mMsg of
-                Just (stateId, Left gs) -> gameStateUI api me stateId gs
-                Just (_, Right h) -> h
+            liftIO $ case mMsg of
+                Just msg -> WS.sendTextData @Text c $ case msg of
+                    (stateId, Left gs) ->
+                        let
+                            html = gameStateUI api me stateId gs
+                            mEvent :: Maybe Text = do
+                                currentPlayer <- CZ.current <$> gs ^? _Right % #players
+                                lastPlayer <- CZ.current . CZ.left <$> gs ^? _Right % #players
+                                isFirstRound <- (== 0) <$> gs ^? _Right % #round
+                                let
+                                    turnStarting = currentPlayer ^. #tries == 0
+                                    isMyTurn = currentPlayer ^. #id == me
+                                    wasMyTurn = lastPlayer ^. #id == me
+                                    lastPlayerCorrect = isJust $ lastPlayer ^. #lastWord
+                                guard turnStarting
+                                if isMyTurn
+                                    then Just "myTurn"
+                                    else
+                                        if wasMyTurn && not lastPlayerCorrect && not isFirstRound
+                                            then Just "timeUp"
+                                            else Nothing
+                         in
+                            decodeUtf8Lenient $ BSL.toStrict $ Aeson.encode [aesonQQ|{html: #{renderText html }, event: #{mEvent}}|]
+                    (_, Right h) -> TL.toStrict $ renderText h
                 Nothing -> pure ()
             sender
     runConcurrently $ asum (Concurrently <$> [pingThread 0, listener, sender])

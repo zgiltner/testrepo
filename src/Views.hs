@@ -49,6 +49,43 @@ sharedHead mHotreload = head_ $ do
     script_ [src_ "https://unpkg.com/htmx.org/dist/ext/ws.js"] ("" :: String)
     style_ [] shakeAnimationCss
     title_ "BombParty"
+    script_
+        []
+        [st|
+        
+htmx.defineExtension("transform-ws-response", {
+    transformResponse : function(resp, xhr, elt) {
+        try{
+            const parsed = JSON.parse(resp)
+            console.log(parsed)
+             if(parsed.event){
+                    htmx.trigger("body",parsed.event)
+            }
+            return parsed.html
+        }catch{
+            return resp
+        }
+    }
+});
+
+const wrongGuess = new Audio("/static/sounds/Errors and Cancel/Cancel 1.m4a");
+const correctGuess = new Audio("/static/sounds/Complete and Success/Success 2.m4a");
+const myTurn = new Audio("/static/sounds/Notifications and Alerts/Alert 3.m4a");
+const timeUp = new Audio("/static/sounds/Errors and Cancel/Error 5.m4a");
+htmx.on("wrongGuess", () => {
+    wrongGuess.play()
+})
+htmx.on("correctGuess", () => {
+    correctGuess.play()
+})
+htmx.on("myTurn", () => {
+    myTurn.play()
+})
+htmx.on("timeUp", () => {
+    timeUp.play()
+})
+
+    |]
     sequenceA_ mHotreload
 
 gameStateUI ::
@@ -91,7 +128,7 @@ gameStateUI ::
     , IsElem
         ( Capture "stateId" UUID
             :> "guess"
-            :> Post '[HTML] (Html ())
+            :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ()))
         )
         api
     ) =>
@@ -177,7 +214,7 @@ playerStateUI ::
     ( IsElem
         ( Capture "stateId" UUID
             :> "guess"
-            :> Post '[HTML] (Html ())
+            :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ()))
         )
         api
     ) =>
@@ -203,7 +240,7 @@ playerStateUI api me stateId gs ps = do
                             div_ [id_ $ "player-state-lives-" <> UUID.toText (getPlayerId me)] $ replicateM_ ps.lives $ toHtml ("❤️" :: String)
                             form_
                                 [ id_ $ "player-state-form-" <> UUID.toText (getPlayerId me)
-                                , hxPostSafe_ $ safeLink api (Proxy @(Capture "stateId" UUID :> "guess" :> Post '[HTML] (Html ()))) stateId
+                                , hxPostSafe_ $ safeLink api (Proxy @(Capture "stateId" UUID :> "guess" :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ())))) stateId
                                 , hxTarget_ "#gameState"
                                 ]
                                 $ do

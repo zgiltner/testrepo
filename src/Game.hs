@@ -42,6 +42,7 @@ data GameState = GameState
     , givenLetters :: CaseInsensitiveText
     , alreadyUsedWords :: HashSet CaseInsensitiveText
     , settings :: Settings
+    , round :: Natural
     }
     deriving (Show, Generic)
 
@@ -81,6 +82,7 @@ startGame s = case HashMap.toList (s ^. #players) of
                 $ GameState
                     { alreadyUsedWords = mempty
                     , players = CZ.fromNonEmpty $ fmap (uncurry initialPlayerState) $ p :| ps
+                    , round = 0
                     , ..
                     }
 
@@ -99,8 +101,16 @@ mkMove gs = \case
                 & ( #alreadyUsedWords
                         %~ HashSet.insert g
                   )
+                & #round
+                %~ (+ 1)
         | otherwise -> gs & #players %~ updateCurrent (#tries %~ (+ 1))
-    TimeUp -> gs & #players %~ goToNextPlayer . updateCurrent timeUpForPlayer
+    TimeUp ->
+        gs
+            & #players
+            %~ goToNextPlayer
+            . updateCurrent timeUpForPlayer
+            & #round
+            %~ (+ 1)
 
 pickNewGivenLetters :: GameState -> GameState
 pickNewGivenLetters gs =

@@ -21,6 +21,8 @@ main = do
     givenLettersFile <- fromMaybe "histogram.csv" <$> lookupEnv "GIVEN_LETTERS_FILE"
     givenLettersSet <- take 450 . fmap (CaseInsensitiveText . T.takeWhile (/= ',')) . T.lines <$> readFileUtf8 givenLettersFile
 
+    staticDir <- fromMaybe "static" <$> lookupEnv "STATIC_DIR"
+
     stdGen <- newStdGen
     stateId <- nextRandom
 

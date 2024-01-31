@@ -47,6 +47,7 @@ update =
                 logOptions <- logOptionsHandle h True
                 withLogFunc logOptions
                     $ \logFunction -> do
+                        let staticDir = "static"
                         run 8080
                             $ app App{..}
                             $ Just
