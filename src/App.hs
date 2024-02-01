@@ -7,14 +7,11 @@ module App (AppM, App (..), Game (..), AppGameState (..), _InGame, _InLobby) whe
 
 import CustomPrelude
 
-import qualified CircularZipper as CZ
 import Data.UUID (UUID)
-import Game (GameState, Move, Settings, isGameOver)
-import qualified Game
+import Game (GameState, Settings)
 import Lucid (Html)
 import Optics.TH (makePrisms)
 import qualified RIO
-import WithPlayerApi (PlayerId)
 
 data Game = InLobby Settings | InGame GameState
 makePrisms ''Game
