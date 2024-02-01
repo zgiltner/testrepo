@@ -38,6 +38,7 @@ sharedHead mHotreload = head_ $ do
     meta_ [charset_ "UTF-8"]
     meta_ [name_ "viewport_", content_ "width=device-width, initial-scale=1.0"]
     link_ [rel_ "icon", href_ "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💣</text></svg>"]
+    link_ [href_ "/static/css/index.css", rel_ "stylesheet"]
     script_ [src_ "https://cdn.tailwindcss.com"] ("" :: String)
     script_
         [ src_ "https://unpkg.com/htmx.org@1.9.10"
@@ -47,60 +48,8 @@ sharedHead mHotreload = head_ $ do
         ("" :: String)
     script_ [src_ "https://unpkg.com/hyperscript.org@0.9.12"] ("" :: String)
     script_ [src_ "https://unpkg.com/htmx.org/dist/ext/ws.js"] ("" :: String)
-    style_ [] shakeAnimationCss
+    script_ [src_ "/static/js/index.js"] ("" :: String)
     title_ "BombParty"
-    script_
-        []
-        [st|
-        
-htmx.defineExtension("transform-ws-response", {
-    transformResponse : function(resp, xhr, elt) {
-        try{
-            const {events, html} = JSON.parse(resp)
-             if(events){
-                console.log(events)
-                for(const event of events) {
-                    if(event) htmx.trigger("body",event)   
-                }
-            }
-            return html
-        }catch{
-            return resp
-        }
-    }
-});
-
-const tick = new Audio("/static/sounds/Buttons and Navigation/Button 5.m4a");
-
-const eventSoundDict = {
-    wrongGuess: new Audio("/static/sounds/Errors and Cancel/Cancel 1.m4a"),
-    correctGuess: new Audio("/static/sounds/Complete and Success/Success 2.m4a"),
-    myTurn: new Audio("/static/sounds/Notifications and Alerts/Alert 3.m4a"),
-    timeUp: new Audio("/static/sounds/Errors and Cancel/Error 5.m4a"),
-    iWin: new Audio("/static/sounds/Notifications and Alerts/Notification 9.m4a")
-}
-for (const event in eventSoundDict) {
-    htmx.on(event, () => {
-        eventSoundDict[event].play()
-    })
-}
-
-let turnTickingIntervalID
-htmx.on('myTurn' ,() => {
-    turnTickingIntervalID = setInterval(() => {
-        tick.play()
-    },1200)
-})
-htmx.on('timeUp' ,() => {
-    clearInterval(turnTickingIntervalID)
-})
-htmx.on('correctGuess' ,() => {
-    clearInterval(turnTickingIntervalID)
-})
-htmx.on('gameOver', () => {
-    clearInterval(turnTickingIntervalID)
-})
-|]
     sequenceA_ mHotreload
 
 gameStateUI ::
@@ -314,26 +263,3 @@ playerFirst :: PlayerId -> CircularZipper PlayerState -> [PlayerState]
 playerFirst pId cz = CZ.current playerCurrent : CZ.rights playerCurrent <> CZ.lefts playerCurrent
   where
     playerCurrent = fromMaybe cz $ CZ.findRight ((== pId) . (.id)) cz
-
-shakeAnimationCss :: Text
-shakeAnimationCss =
-    [st|
-@keyframes shake {
-  0% {
-    margin-left: 0rem;
-  }
-  25% {
-    margin-left: 0.5rem;
-  }
-  75% {
-    margin-left: -0.5rem;
-  }
-  100% {
-    margin-left: 0rem;
-  }
-}
-
-.shake {
-  animation: shake 0.2s ease-in-out 0s 2;
-}
-|]
