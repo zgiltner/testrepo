@@ -20,7 +20,11 @@ import Servant.HTML.Lucid
 import WithPlayerApi (PlayerId (..))
 import qualified WithPlayerApi
 
-type API = Get '[HTML] (Html ()) :<|> StateChangeAPI :<|> "ws" :> WebSocket
+type API =
+    Get '[HTML] (Html ())
+        :<|> StateChangeAPI
+        :<|> "ws"
+            :> WebSocket
 
 type StateChangeAPI =
     Capture "stateId" UUID
@@ -35,7 +39,7 @@ type StateChangeAPI =
                     :> ReqBody '[FormUrlEncoded] Handlers.NamePost
                     :> Post '[HTML] (Html ())
                 :<|> "start" :> Post '[HTML] (Html ())
-                :<|> "start-over" :> Post '[HTML] (Html ())
+                :<|> "start-over" :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ()))
                 :<|> "guess"
                     :> ReqBody '[FormUrlEncoded] Handlers.GuessPost
                     :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ()))

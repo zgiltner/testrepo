@@ -56,36 +56,51 @@ sharedHead mHotreload = head_ $ do
 htmx.defineExtension("transform-ws-response", {
     transformResponse : function(resp, xhr, elt) {
         try{
-            const parsed = JSON.parse(resp)
-            console.log(parsed)
-             if(parsed.event){
-                    htmx.trigger("body",parsed.event)
+            const {events, html} = JSON.parse(resp)
+             if(events){
+                console.log(events)
+                for(const event of events) {
+                    if(event) htmx.trigger("body",event)   
+                }
             }
-            return parsed.html
+            return html
         }catch{
             return resp
         }
     }
 });
 
-const wrongGuess = new Audio("/static/sounds/Errors and Cancel/Cancel 1.m4a");
-const correctGuess = new Audio("/static/sounds/Complete and Success/Success 2.m4a");
-const myTurn = new Audio("/static/sounds/Notifications and Alerts/Alert 3.m4a");
-const timeUp = new Audio("/static/sounds/Errors and Cancel/Error 5.m4a");
-htmx.on("wrongGuess", () => {
-    wrongGuess.play()
-})
-htmx.on("correctGuess", () => {
-    correctGuess.play()
-})
-htmx.on("myTurn", () => {
-    myTurn.play()
-})
-htmx.on("timeUp", () => {
-    timeUp.play()
-})
+const tick = new Audio("/static/sounds/Buttons and Navigation/Button 5.m4a");
 
-    |]
+const eventSoundDict = {
+    wrongGuess: new Audio("/static/sounds/Errors and Cancel/Cancel 1.m4a"),
+    correctGuess: new Audio("/static/sounds/Complete and Success/Success 2.m4a"),
+    myTurn: new Audio("/static/sounds/Notifications and Alerts/Alert 3.m4a"),
+    timeUp: new Audio("/static/sounds/Errors and Cancel/Error 5.m4a"),
+    iWin: new Audio("/static/sounds/Notifications and Alerts/Notification 9.m4a")
+}
+for (const event in eventSoundDict) {
+    htmx.on(event, () => {
+        eventSoundDict[event].play()
+    })
+}
+
+let turnTickingIntervalID
+htmx.on('myTurn' ,() => {
+    turnTickingIntervalID = setInterval(() => {
+        tick.play()
+    },1200)
+})
+htmx.on('timeUp' ,() => {
+    clearInterval(turnTickingIntervalID)
+})
+htmx.on('correctGuess' ,() => {
+    clearInterval(turnTickingIntervalID)
+})
+htmx.on('gameOver', () => {
+    clearInterval(turnTickingIntervalID)
+})
+|]
     sequenceA_ mHotreload
 
 gameStateUI ::
@@ -122,7 +137,7 @@ gameStateUI ::
     , IsElem
         ( Capture "stateId" UUID
             :> "start-over"
-            :> Post '[HTML] (Html ())
+            :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ()))
         )
         api
     , IsElem
@@ -193,7 +208,7 @@ gameStateUI api me stateId game = div_ [id_ "gameState"] $ do
                 [ type_ "button"
                 , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
                 , tabindex_ "-1"
-                , hxPostSafe_ $ safeLink api (Proxy @(Capture "stateId" UUID :> "start-over" :> Post '[HTML] (Html ()))) stateId
+                , hxPostSafe_ $ safeLink api (Proxy @(Capture "stateId" UUID :> "start-over" :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ())))) stateId
                 , hxTarget_ "#gameState"
                 ]
                 "Start A New Game"
