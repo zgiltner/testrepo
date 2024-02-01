@@ -4,7 +4,7 @@ module DevelMain (update) where
 
 import CustomPrelude
 
-import App (App (..), Game (..))
+import App (App (..), AppGameState (..), Game (..))
 import qualified Data.HashSet as HashSet
 import Data.UUID.V4 (nextRandom)
 import Game (initialSettings)
@@ -27,15 +27,15 @@ update =
         reloadChan <- createRef @Text r "reloadChan" newChan
 
         wsGameState <- createRef @Text r "wsGameState" $ do
-            let s =
+            let game =
                     InLobby
                         $ initialSettings
                             (mkStdGen 0)
                             (HashSet.fromList ["the", "quick", "brown", "fox", "friday"])
                             ["fri", "day"]
-            stateId <- nextRandom
+            gameStateId <- nextRandom
             chan <- newTChanIO
-            newTVarIO ((stateId, s), chan)
+            newTVarIO $ AppGameState{..}
 
         wsGameStateTimer <- createRef @Text r "wsGameStateTimer" $ newTVarIO Nothing
 

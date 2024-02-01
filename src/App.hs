@@ -3,7 +3,7 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module App (AppM, App (..), Game (..), _InGame, _InLobby, GameWithStateId) where
+module App (AppM, App (..), Game (..), AppGameState (..), _InGame, _InLobby) where
 
 import CustomPrelude
 
@@ -16,14 +16,20 @@ import Optics.TH (makePrisms)
 import qualified RIO
 import WithPlayerApi (PlayerId)
 
-type GameWithStateId = (UUID, Game)
-
 data Game = InLobby Settings | InGame GameState
 makePrisms ''Game
 
 type AppM = RIO App
+
+data AppGameState = AppGameState
+    { gameStateId :: UUID
+    , game :: Game
+    , chan :: TChan (UUID, Either Game (Html ()))
+    }
+    deriving (Generic)
+
 data App = App
-    { wsGameState :: TVar (GameWithStateId, TChan (UUID, Either Game (Html ())))
+    { wsGameState :: TVar AppGameState
     , wsGameStateTimer :: TVar (Maybe (Async ()))
     , logFunction :: LogFunc
     , staticDir :: FilePath

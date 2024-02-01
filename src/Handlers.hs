@@ -8,7 +8,7 @@ module Handlers where
 
 import CustomPrelude
 
-import App (App (..), AppM, Game (..), _InGame)
+import App (App (..), AppGameState (..), AppM, Game (..), _InGame)
 import CaseInsensitive (CaseInsensitiveText)
 import qualified CircularZipper as CZ
 import qualified Data.Aeson as Aeson
@@ -95,7 +95,7 @@ home ::
     AppM (Html ())
 home api mHotreload me = do
     a <- ask
-    ((stateId, gs), _) <- liftIO $ readTVarIO $ a ^. #wsGameState
+    appGameState <- liftIO $ readTVarIO $ a ^. #wsGameState
     pure $ html_ $ do
         head_ $ sharedHead mHotreload
         body_
@@ -105,21 +105,21 @@ home api mHotreload me = do
                 , makeAttribute "ws-connect" $ "/" <> toUrlPiece (safeLink api (Proxy @("ws" :> WebSocket)))
                 , class_ "container mx-auto px-4 py-4"
                 ]
-            $ gameStateUI api me stateId gs
+            $ gameStateUI api me (appGameState ^. #gameStateId) (appGameState ^. #game)
 
 updateGameState :: UUID -> (Game -> Game) -> AppM Game
-updateGameState stateId f = do
+updateGameState gameStateId f = do
     a <- ask
     liftIO $ do
         stateId' <- nextRandom
         atomically $ do
-            ((currStateId, gs), chan) <- readTVar $ a ^. #wsGameState
-            if currStateId == stateId
+            appGameState <- readTVar $ a ^. #wsGameState
+            if (appGameState ^. #gameStateId) == gameStateId
                 then do
-                    let gs' = f gs
-                    writeTChan chan (stateId', Left gs')
-                    gs' <$ writeTVar (a ^. #wsGameState) ((stateId', gs'), chan)
-                else pure gs
+                    let gs' = f $ appGameState ^. #game
+                    writeTChan (appGameState ^. #chan) (stateId', Left gs')
+                    gs' <$ writeTVar (a ^. #wsGameState) appGameState{gameStateId = stateId', game = gs'}
+                else pure $ appGameState ^. #game
 
 join ::
     ( APIConstraints api
@@ -280,9 +280,7 @@ ws ::
     AppM ()
 ws api me c = do
     a <- ask
-    myChan <- atomically $ do
-        (_, chan) <- readTVar $ a ^. #wsGameState
-        dupTChan chan
+    myChan <- atomically $ dupTChan . view #chan =<< readTVar (a ^. #wsGameState)
     let
         pingThread :: Int -> AppM ()
         pingThread i = do
@@ -298,16 +296,16 @@ ws api me c = do
                         Left err -> logError $ "WebSocket received bad json: " <> fromString err
                         Right msg -> do
                             atomically $ do
-                                ((currStateId, _), _) <- readTVar $ a ^. #wsGameState
-                                writeTChan myChan (currStateId, Right $ guessInput (msg ^. #guess) False False False me)
+                                appGameState <- readTVar $ a ^. #wsGameState
+                                writeTChan myChan (appGameState ^. #gameStateId, Right $ guessInput (msg ^. #guess) False False False me)
                     listener
                 _ -> listener
         sender :: AppM ()
         sender = do
             mMsg <- atomically $ do
                 (stateId, msg) <- readTChan myChan
-                ((currStateId, _), _) <- readTVar $ a ^. #wsGameState
-                pure $ if stateId == currStateId then Just (stateId, msg) else Nothing
+                appGameState <- readTVar $ a ^. #wsGameState
+                pure $ if stateId == (appGameState ^. #gameStateId) then Just (stateId, msg) else Nothing
 
             liftIO $ for_ mMsg $ \msg -> WS.sendTextData @Text c $ case msg of
                 (stateId, Left gs) ->
