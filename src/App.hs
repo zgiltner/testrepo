@@ -35,10 +35,10 @@ instance HasLogFunc App where
 
 data GameEvent = TimeUp | CorrectGuess | MyTurn | GameOver | IWin
 
-mkMove :: PlayerId -> GameState -> Move -> (Maybe [GameEvent], GameState)
-mkMove me gs move = (gameOver <> inProgressEvents, gs')
+makeMove :: PlayerId -> GameState -> Move -> (Maybe [GameEvent], GameState)
+makeMove me gs move = (gameOver <> inProgressEvents, gs')
   where
-    gs' = Game.mkMove gs move
+    gs' = Game.makeMove gs move
     gameOver = if isGameOver gs then Just [GameOver] else Nothing
     inProgressEvents = do
         let

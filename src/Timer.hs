@@ -11,7 +11,7 @@ import Game (
     Move (..),
     Settings (secondsToGuess),
     isGameOver,
-    mkMove,
+    makeMove,
  )
 
 foo = to
@@ -31,7 +31,7 @@ startTimer a = do
             ((_, gs), chan) <- readTVar $ a ^. #wsGameState
             case gs of
                 (InGame gss) -> do
-                    let gs' = InGame $ mkMove gss TimeUp
+                    let gs' = InGame $ makeMove gss TimeUp
                     writeTVar (a ^. #wsGameState) ((nextStateId, gs'), chan)
                     writeTChan chan (nextStateId, Left gs')
                     pure gs'

@@ -22,7 +22,7 @@ import Game (
     PlayerState (..),
     Settings (..),
     isGameOver,
-    mkMove,
+    makeMove,
     startGame,
  )
 import Lucid hiding (for_)
@@ -245,7 +245,7 @@ guess ::
     AppM (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ()))
 guess api me stateId p = do
     gs <- updateGameState stateId $ \case
-        InGame gs -> InGame $ mkMove gs $ Guess $ p ^. #guess
+        InGame gs -> InGame $ makeMove gs $ Guess $ p ^. #guess
         x -> x
     mSound <- case gs of
         InGame gsS -> do

@@ -10,7 +10,7 @@ module Game (
     initialPlayerState,
     initialSettings,
     startGame,
-    mkMove,
+    makeMove,
     isGameOver,
     isPlayerAlive,
     isPlayerTurn,
@@ -88,8 +88,8 @@ startGame s = case HashMap.toList (s ^. #players) of
 
 data Move = Guess CaseInsensitiveText | TimeUp
 
-mkMove :: GameState -> Move -> GameState
-mkMove gs = \case
+makeMove :: GameState -> Move -> GameState
+makeMove gs = \case
     Guess g
         | isValidGuess gs g ->
             pickNewGivenLetters
