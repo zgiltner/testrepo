@@ -4,7 +4,7 @@ module DevelMain (update) where
 
 import CustomPrelude
 
-import App (App (..))
+import App (App (..), Game (..))
 import qualified Data.HashSet as HashSet
 import Data.UUID.V4 (nextRandom)
 import Game (initialSettings)
@@ -28,7 +28,7 @@ update =
 
         wsGameState <- createRef @Text r "wsGameState" $ do
             let s =
-                    Left
+                    InLobby
                         $ initialSettings
                             (mkStdGen 0)
                             (HashSet.fromList ["the", "quick", "brown", "fox", "friday"])

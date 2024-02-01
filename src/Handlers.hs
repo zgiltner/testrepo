@@ -8,7 +8,7 @@ module Handlers where
 
 import CustomPrelude
 
-import App (App (..), AppM, Game)
+import App (App (..), AppM, Game (..), _InGame)
 import CaseInsensitive (CaseInsensitiveText)
 import qualified CircularZipper as CZ
 import qualified Data.Aeson as Aeson
@@ -25,7 +25,7 @@ import Game (
     mkMove,
     startGame,
  )
-import Lucid
+import Lucid hiding (for_)
 import Lucid.Base (makeAttribute)
 import Lucid.Htmx
 import qualified Network.WebSockets as WS
@@ -131,7 +131,7 @@ join ::
 join api me stateId = do
     gs <- updateGameState stateId
         $ \case
-            Left settings -> Left $ settings & #players %~ HashMap.insert me Nothing
+            InLobby settings -> InLobby $ settings & #players %~ HashMap.insert me Nothing
             x -> x
     pure $ gameStateUI api me stateId gs
 
@@ -152,7 +152,7 @@ leave ::
 leave api me stateId p = do
     gs <- updateGameState stateId
         $ \case
-            Left settings -> Left $ settings & #players %~ HashMap.delete (p ^. #playerId)
+            InLobby settings -> InLobby $ settings & #players %~ HashMap.delete (p ^. #playerId)
             x -> x
     pure $ gameStateUI api me stateId gs
 
@@ -173,7 +173,7 @@ settings ::
 settings api me stateId p = do
     gs <- updateGameState stateId
         $ \case
-            Left settings -> Left $ settings & #secondsToGuess .~ p ^. #secondsToGuess
+            InLobby settings -> InLobby $ settings & #secondsToGuess .~ p ^. #secondsToGuess
             x -> x
     pure $ gameStateUI api me stateId gs
 
@@ -194,7 +194,7 @@ name ::
 name api me stateId p = do
     gs <- updateGameState stateId
         $ \case
-            Left settings -> Left $ settings & #players %~ HashMap.update (const $ Just $ Just $ p ^. #name) (p ^. #playerId)
+            InLobby settings -> InLobby $ settings & #players %~ HashMap.update (const $ Just $ Just $ p ^. #name) (p ^. #playerId)
             x -> x
     pure $ gameStateUI api me stateId gs
 
@@ -207,11 +207,11 @@ start ::
     AppM (Html ())
 start api me stateId = do
     gs <- updateGameState stateId $ \case
-        Left settings -> maybe (Left settings) Right $ startGame settings
+        InLobby settings -> maybe (InLobby settings) InGame $ startGame settings
         x -> x
     a <- ask
     case gs of
-        Right _ -> startTimer a
+        InGame _ -> startTimer a
         _ -> pure ()
     pure $ gameStateUI api me stateId gs
 
@@ -225,8 +225,8 @@ startOver ::
 startOver api me stateId = do
     stopTimer =<< ask
     gs <- updateGameState stateId $ \case
-        Right gs ->
-            Left $ gs ^. #settings
+        InGame gs ->
+            InLobby $ gs ^. #settings
         x -> x
     pure $ addHeader "gameOver" $ gameStateUI api me stateId gs
 
@@ -245,10 +245,10 @@ guess ::
     AppM (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ()))
 guess api me stateId p = do
     gs <- updateGameState stateId $ \case
-        Right gs -> Right $ mkMove gs $ Guess $ p ^. #guess
+        InGame gs -> InGame $ mkMove gs $ Guess $ p ^. #guess
         x -> x
     mSound <- case gs of
-        Right gsS -> do
+        InGame gsS -> do
             a <- ask
 
             -- It's the next players turn
@@ -309,32 +309,30 @@ ws api me c = do
                 ((currStateId, _), _) <- readTVar $ a ^. #wsGameState
                 pure $ if stateId == currStateId then Just (stateId, msg) else Nothing
 
-            liftIO $ case mMsg of
-                Just msg -> WS.sendTextData @Text c $ case msg of
-                    (stateId, Left gs) ->
-                        let
-                            html = gameStateUI api me stateId gs
-                            mEvents :: Maybe [Text] = do
-                                let gameOver = maybe (Just ["gameOver"]) (bool Nothing (Just ["gameOver"]) . isGameOver) $ gs ^? _Right
-                                gameOver <> do
-                                    players <- gs ^? _Right % #players
-                                    isFirstRound <- (== 0) <$> gs ^? _Right % #round
-                                    let
-                                        currentPlayer = CZ.current players
-                                        lastPlayer = CZ.current $ CZ.left players
-                                        turnStarting = currentPlayer ^. #tries == 0
-                                        wasMyTurn = lastPlayer ^. #id == me
-                                        lastPlayerCorrect = isJust $ lastPlayer ^. #lastWord
-                                        isMyTurn = turnStarting && currentPlayer ^. #id == me
-                                        iWin = do
-                                            gOver <- isGameOver <$> gs ^? _Right
-                                            if gOver && isMyTurn then Just ["iWin"] else Nothing
-                                        myTurn = bool Nothing (Just ["myTurn"]) isMyTurn
-                                        timeUp = bool Nothing (Just ["timeUp"]) $ turnStarting && wasMyTurn && not lastPlayerCorrect && not isFirstRound
-                                    iWin <|> myTurn <|> timeUp
-                         in
-                            decodeUtf8Lenient $ BSL.toStrict $ Aeson.encode [aesonQQ|{html: #{renderText html }, events: #{mEvents}}|]
-                    (_, Right h) -> TL.toStrict $ renderText h
-                Nothing -> pure ()
+            liftIO $ for_ mMsg $ \msg -> WS.sendTextData @Text c $ case msg of
+                (stateId, Left gs) ->
+                    let
+                        html = gameStateUI api me stateId gs
+                        mEvents :: Maybe [Text] = do
+                            let gameOver = maybe (Just ["gameOver"]) (bool Nothing (Just ["gameOver"]) . isGameOver) $ gs ^? _InGame
+                            gameOver <> do
+                                players <- gs ^? _InGame % #players
+                                isFirstRound <- (== 0) <$> gs ^? _InGame % #round
+                                let
+                                    currentPlayer = CZ.current players
+                                    lastPlayer = CZ.current $ CZ.left players
+                                    turnStarting = currentPlayer ^. #tries == 0
+                                    wasMyTurn = lastPlayer ^. #id == me
+                                    lastPlayerCorrect = isJust $ lastPlayer ^. #lastWord
+                                    isMyTurn = turnStarting && currentPlayer ^. #id == me
+                                    iWin = do
+                                        gOver <- isGameOver <$> gs ^? _InGame
+                                        if gOver && isMyTurn then Just ["iWin"] else Nothing
+                                    myTurn = bool Nothing (Just ["myTurn"]) isMyTurn
+                                    timeUp = bool Nothing (Just ["timeUp"]) $ turnStarting && wasMyTurn && not lastPlayerCorrect && not isFirstRound
+                                iWin <|> myTurn <|> timeUp
+                     in
+                        decodeUtf8Lenient $ BSL.toStrict $ Aeson.encode [aesonQQ|{html: #{renderText html }, events: #{mEvents}}|]
+                (_, Right h) -> TL.toStrict $ renderText h
             sender
     runConcurrently $ asum (Concurrently <$> [pingThread 0, listener, sender])

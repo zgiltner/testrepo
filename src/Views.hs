@@ -6,7 +6,7 @@ module Views where
 
 import CustomPrelude
 
-import App (Game)
+import App (Game (..))
 import CaseInsensitive (CaseInsensitiveChar (..), CaseInsensitiveText (..))
 import CircularZipper (CircularZipper (..))
 import qualified CircularZipper as CZ
@@ -103,7 +103,7 @@ gameStateUI ::
     Html ()
 gameStateUI api me stateId game = div_ [id_ "gameState"] $ do
     case game of
-        Left settings -> do
+        InLobby settings -> do
             h1_ "Settings"
             div_ $ do
                 label_ [Lucid.for_ "secondsToGuess"] "Seconds per  guess"
@@ -152,7 +152,7 @@ gameStateUI api me stateId game = div_ [id_ "gameState"] $ do
                     , hxTarget_ "#gameState"
                     ]
                     "Start Game"
-        Right gs -> do
+        InGame gs -> do
             button_
                 [ type_ "button"
                 , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
