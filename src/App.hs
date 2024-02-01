@@ -38,31 +38,3 @@ data App = App
 
 instance HasLogFunc App where
     logFuncL = RIO.lens (view #logFunction) (flip $ set #logFunction)
-
-data GameEvent = TimeUp | CorrectGuess | MyTurn | GameOver | IWin
-
-makeMove :: PlayerId -> GameState -> Move -> (Maybe [GameEvent], GameState)
-makeMove me gs move = (gameOver <> inProgressEvents, gs')
-  where
-    gs' = Game.makeMove gs move
-    gameOver = if isGameOver gs then Just [GameOver] else Nothing
-    inProgressEvents = do
-        let
-            isFirstRound = (gs ^. #round) == 0
-            players = gs ^. #players
-            currentPlayer = CZ.current players
-            lastPlayer = CZ.current $ CZ.left players
-            turnStarting = currentPlayer ^. #tries == 0
-            wasMyTurn = lastPlayer ^. #id == me
-            lastPlayerCorrect = isJust $ lastPlayer ^. #lastWord
-            isMyTurn = turnStarting && currentPlayer ^. #id == me
-            boolToMaybe = bool Nothing . Just
-            iWin = boolToMaybe [IWin] $ isGameOver gs
-            myTurn = boolToMaybe [MyTurn] isMyTurn
-            timeUp =
-                boolToMaybe [TimeUp]
-                    $ turnStarting
-                    && wasMyTurn
-                    && not lastPlayerCorrect
-                    && not isFirstRound
-        iWin <|> myTurn <|> timeUp
