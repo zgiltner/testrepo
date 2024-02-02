@@ -24,14 +24,14 @@ startTimer a = do
         mSecondsToGuess <- preview secondsToGuessL <$> readTVarIO (a ^. #wsGameState)
         traverse_ (threadDelay . (* 1000000)) mSecondsToGuess
 
-        nextStateId <- liftIO nextRandom
         gs <- atomically $ do
             appGameState <- readTVar $ a ^. #wsGameState
+            let nextStateKey = 1 + appGameState ^. #stateKey
             case appGameState ^. #game of
                 (InGame gss) -> do
                     let gs' = InGame $ makeMove gss TimeUp
-                    writeTVar (a ^. #wsGameState) $ appGameState{game = gs', gameStateId = nextStateId}
-                    writeTChan (appGameState ^. #chan) (nextStateId, Left gs')
+                    writeTVar (a ^. #wsGameState) $ appGameState{game = gs', stateKey = nextStateKey}
+                    writeTChan (appGameState ^. #chan) (nextStateKey, Left gs')
                     pure gs'
                 x -> pure x
 

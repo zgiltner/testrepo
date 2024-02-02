@@ -7,9 +7,8 @@ module Server (app) where
 
 import CustomPrelude
 
-import App (App (..), AppM)
+import App (App (..), AppM, StateKey)
 import Control.Monad.Except (ExceptT (..))
-import Data.UUID (UUID)
 import GameStateEvent (GameStateEvent)
 import qualified Handlers
 import Lucid hiding (for_)
@@ -27,7 +26,7 @@ type API =
             :> WebSocket
 
 type StateChangeAPI =
-    Capture "stateId" UUID
+    Capture "stateKey" StateKey
         :> ( "join" :> Post '[HTML] (Html ())
                 :<|> "leave"
                     :> ReqBody '[FormUrlEncoded] Handlers.LeavePost

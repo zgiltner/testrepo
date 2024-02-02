@@ -33,7 +33,7 @@ update =
                             (mkStdGen 0)
                             (HashSet.fromList ["the", "quick", "brown", "fox", "friday"])
                             ["fri", "day"]
-            gameStateId <- nextRandom
+                stateKey = 0
             chan <- newTChanIO
             newTVarIO $ AppGameState{..}
 

@@ -8,7 +8,7 @@ module Handlers where
 
 import CustomPrelude
 
-import App (App (..), AppGameState (..), AppM, Game (..), _InGame)
+import App (App (..), AppGameState (..), AppM, Game (..), StateKey, _InGame)
 import CaseInsensitive (CaseInsensitiveText)
 import qualified CircularZipper as CZ
 import qualified Data.Aeson as Aeson
@@ -43,43 +43,43 @@ import WithPlayerApi (PlayerId (..))
 
 type APIConstraints api =
     ( IsElem
-        ( Capture "stateId" UUID
+        ( Capture "stateKey" StateKey
             :> "leave"
             :> Post '[HTML] (Html ())
         )
         api
     , IsElem
-        ( Capture "stateId" UUID
+        ( Capture "stateKey" StateKey
             :> "join"
             :> Post '[HTML] (Html ())
         )
         api
     , IsElem
-        ( Capture "stateId" UUID
+        ( Capture "stateKey" StateKey
             :> "start"
             :> Post '[HTML] (Html ())
         )
         api
     , IsElem
-        ( Capture "stateId" UUID
+        ( Capture "stateKey" StateKey
             :> "settings"
             :> Post '[HTML] (Html ())
         )
         api
     , IsElem
-        ( Capture "stateId" UUID
+        ( Capture "stateKey" StateKey
             :> "name"
             :> Post '[HTML] (Html ())
         )
         api
     , IsElem
-        ( Capture "stateId" UUID
+        ( Capture "stateKey" StateKey
             :> "start-over"
             :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" GameStateEvent] (Html ()))
         )
         api
     , IsElem
-        ( Capture "stateId" UUID
+        ( Capture "stateKey" StateKey
             :> "guess"
             :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" GameStateEvent] (Html ()))
         )
@@ -106,20 +106,22 @@ home api mHotreload me = do
                 , makeAttribute "ws-connect" $ "/" <> toUrlPiece (safeLink api (Proxy @("ws" :> WebSocket)))
                 , class_ "container mx-auto px-4 py-4"
                 ]
-            $ gameStateUI api me (appGameState ^. #gameStateId) (appGameState ^. #game)
+            $ gameStateUI api me (appGameState ^. #stateKey) (appGameState ^. #game)
 
-updateGameState :: UUID -> (Game -> Game) -> AppM Game
-updateGameState gameStateId f = do
+updateGameState :: StateKey -> (Game -> Game) -> AppM Game
+updateGameState stateKey f = do
     a <- ask
+    logDebug . display . view #stateKey =<< readTVarIO (a ^. #wsGameState)
     liftIO $ do
-        stateId' <- nextRandom
         atomically $ do
             appGameState <- readTVar $ a ^. #wsGameState
-            if (appGameState ^. #gameStateId) == gameStateId
+            if (appGameState ^. #stateKey) == stateKey
                 then do
-                    let gs' = f $ appGameState ^. #game
-                    writeTChan (appGameState ^. #chan) (stateId', Left gs')
-                    gs' <$ writeTVar (a ^. #wsGameState) appGameState{gameStateId = stateId', game = gs'}
+                    let
+                        gs' = f $ appGameState ^. #game
+                        stateKey' = stateKey + 1
+                    writeTChan (appGameState ^. #chan) (stateKey', Left gs')
+                    gs' <$ writeTVar (a ^. #wsGameState) appGameState{stateKey = stateKey', game = gs'}
                 else pure $ appGameState ^. #game
 
 join ::
@@ -127,14 +129,14 @@ join ::
     ) =>
     Proxy api ->
     PlayerId ->
-    UUID ->
+    StateKey ->
     AppM (Html ())
-join api me stateId = do
-    gs <- updateGameState stateId
+join api me stateKey = do
+    gs <- updateGameState stateKey
         $ \case
             InLobby settings -> InLobby $ settings & #players %~ HashMap.insert me Nothing
             x -> x
-    pure $ gameStateUI api me stateId gs
+    pure $ gameStateUI api me stateKey gs
 
 newtype LeavePost = LeavePost
     {playerId :: PlayerId}
@@ -147,15 +149,15 @@ leave ::
     ) =>
     Proxy api ->
     PlayerId ->
-    UUID ->
+    StateKey ->
     LeavePost ->
     AppM (Html ())
-leave api me stateId p = do
-    gs <- updateGameState stateId
+leave api me stateKey p = do
+    gs <- updateGameState stateKey
         $ \case
             InLobby settings -> InLobby $ settings & #players %~ HashMap.delete (p ^. #playerId)
             x -> x
-    pure $ gameStateUI api me stateId gs
+    pure $ gameStateUI api me stateKey gs
 
 data SettingsPost = SettingsPost
     {secondsToGuess :: Int}
@@ -168,15 +170,15 @@ settings ::
     ) =>
     Proxy api ->
     PlayerId ->
-    UUID ->
+    StateKey ->
     SettingsPost ->
     AppM (Html ())
-settings api me stateId p = do
-    gs <- updateGameState stateId
+settings api me stateKey p = do
+    gs <- updateGameState stateKey
         $ \case
             InLobby settings -> InLobby $ settings & #secondsToGuess .~ p ^. #secondsToGuess
             x -> x
-    pure $ gameStateUI api me stateId gs
+    pure $ gameStateUI api me stateKey gs
 
 data NamePost = NamePost
     {playerId :: PlayerId, name :: Text}
@@ -189,47 +191,47 @@ name ::
     ) =>
     Proxy api ->
     PlayerId ->
-    UUID ->
+    StateKey ->
     NamePost ->
     AppM (Html ())
-name api me stateId p = do
-    gs <- updateGameState stateId
+name api me stateKey p = do
+    gs <- updateGameState stateKey
         $ \case
             InLobby settings -> InLobby $ settings & #players %~ HashMap.update (const $ Just $ Just $ p ^. #name) (p ^. #playerId)
             x -> x
-    pure $ gameStateUI api me stateId gs
+    pure $ gameStateUI api me stateKey gs
 
 start ::
     ( APIConstraints api
     ) =>
     Proxy api ->
     PlayerId ->
-    UUID ->
+    StateKey ->
     AppM (Html ())
-start api me stateId = do
-    gs <- updateGameState stateId $ \case
+start api me stateKey = do
+    gs <- updateGameState stateKey $ \case
         InLobby settings -> maybe (InLobby settings) InGame $ startGame settings
         x -> x
     a <- ask
     case gs of
         InGame _ -> startTimer a
         _ -> pure ()
-    pure $ gameStateUI api me stateId gs
+    pure $ gameStateUI api me stateKey gs
 
 startOver ::
     ( APIConstraints api
     ) =>
     Proxy api ->
     PlayerId ->
-    UUID ->
+    StateKey ->
     AppM (Headers '[Header "HX-Trigger-After-Swap" GameStateEvent] (Html ()))
-startOver api me stateId = do
+startOver api me stateKey = do
     stopTimer =<< ask
-    gs <- updateGameState stateId $ \case
+    gs <- updateGameState stateKey $ \case
         InGame gs ->
             InLobby $ gs ^. #settings
         x -> x
-    pure $ addHeader GameOver $ gameStateUI api me stateId gs
+    pure $ addHeader GameOver $ gameStateUI api me stateKey gs
 
 newtype GuessPost = GuessPost {guess :: CaseInsensitiveText}
     deriving stock (Show, Generic)
@@ -241,14 +243,14 @@ guess ::
     ) =>
     Proxy api ->
     PlayerId ->
-    UUID ->
+    StateKey ->
     GuessPost ->
     AppM (Headers '[Header "HX-Trigger-After-Swap" GameStateEvent] (Html ()))
-guess api me stateId p = do
-    gs <- updateGameState stateId $ \case
+guess api me stateKey p = do
+    gs <- updateGameState stateKey $ \case
         InGame gs -> InGame $ makeMove gs $ Guess $ p ^. #guess
         x -> x
-    let html = gameStateUI api me stateId gs
+    let html = gameStateUI api me stateKey gs
     case gs of
         InGame gsS -> do
             a <- ask
@@ -298,21 +300,21 @@ ws api me c = do
                         Right msg -> do
                             atomically $ do
                                 appGameState <- readTVar $ a ^. #wsGameState
-                                writeTChan myChan (appGameState ^. #gameStateId, Right $ guessInput (msg ^. #guess) False False False me)
+                                writeTChan myChan (appGameState ^. #stateKey, Right $ guessInput (msg ^. #guess) False False False me)
                     listener
                 _ -> listener
         sender :: AppM ()
         sender = do
             mMsg <- atomically $ do
-                (stateId, msg) <- readTChan myChan
+                (stateKey, msg) <- readTChan myChan
                 appGameState <- readTVar $ a ^. #wsGameState
-                pure $ if stateId == (appGameState ^. #gameStateId) then Just (stateId, msg) else Nothing
+                pure $ if stateKey == (appGameState ^. #stateKey) then Just (stateKey, msg) else Nothing
 
             liftIO $ for_ mMsg $ \msg -> WS.sendTextData @Text c $ case msg of
-                (stateId, Left gs) ->
+                (stateKey, Left gs) ->
                     decodeUtf8Lenient
                         $ BSL.toStrict
-                        $ Aeson.encode [aesonQQ|{html: #{renderText $ gameStateUI api me stateId gs}, events: #{getGameStateEvents me gs}}|]
+                        $ Aeson.encode [aesonQQ|{html: #{renderText $ gameStateUI api me stateKey gs}, events: #{getGameStateEvents me gs}}|]
                 (_, Right h) -> TL.toStrict $ renderText h
             sender
     runConcurrently $ asum (Concurrently <$> [pingThread 0, listener, sender])
