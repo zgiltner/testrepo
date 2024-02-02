@@ -4,6 +4,7 @@ module GameStateEvent (GameStateEvent (..), getGameStateEvents) where
 
 import App (Game (..))
 import qualified CircularZipper as CZ
+import Control.Applicative (empty)
 import CustomPrelude
 import Data.Aeson (ToJSON (..))
 import Game (GameState (..), PlayerState (..), isGameOver)
@@ -18,6 +19,7 @@ data GameStateEvent
     | WrongGuess
     | CorrectGuess
     | SettingsUpdate
+    | ILose
     deriving stock (Show)
 
 instance ToHttpApiData GameStateEvent where
@@ -27,8 +29,8 @@ instance ToJSON GameStateEvent where
     toJSON = toJSON . toUrlPiece
     toEncoding = toEncoding . toUrlPiece
 
-boolToMaybe :: a -> Bool -> Maybe a
-boolToMaybe = bool Nothing . Just
+pureIf :: (Alternative m) => Bool -> a -> m a
+pureIf a b = if a then pure b else empty
 
 getGameStateEvents :: PlayerId -> Game -> Maybe [GameStateEvent]
 getGameStateEvents me = \case
@@ -43,9 +45,10 @@ getGameStateEvents me = \case
             lastPlayerCorrect = isJust $ lastPlayer ^. #lastWord
             isMyTurn = turnStarting && currentPlayer ^. #id == me
 
-            gameOver = boolToMaybe [GameOver] $ isGameOver gs
-            iWin = boolToMaybe [IWin] $ isGameOver gs && isMyTurn
-            myTurn = boolToMaybe [MyTurn] isMyTurn
-            timeUp = boolToMaybe [TimeUp] $ turnStarting && wasMyTurn && not lastPlayerCorrect && not isFirstRound
+            gameOver = pureIf (isGameOver gs) [GameOver]
+            iWin = pureIf (isGameOver gs && isMyTurn) [IWin]
+            myTurn = pureIf isMyTurn [MyTurn]
+            timeUp = pureIf (turnStarting && wasMyTurn && not lastPlayerCorrect && not isFirstRound) [TimeUp]
+            iLose = pureIf (isGameOver gs && not isMyTurn) [ILose]
 
-        gameOver <> (iWin <|> myTurn <|> timeUp)
+        gameOver <> (iWin <|> iLose <|> myTurn <|> timeUp)

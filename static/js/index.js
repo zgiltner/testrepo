@@ -23,6 +23,7 @@ const eventSoundDict = {
   MyTurn: new Audio("/static/sounds/Notifications and Alerts/Alert 3.m4a"),
   TimeUp: new Audio("/static/sounds/Errors and Cancel/Error 5.m4a"),
   IWin: new Audio("/static/sounds/Notifications and Alerts/Notification 9.m4a"),
+  ILose: new Audio("/static/sounds/Errors and Cancel/Error 4.m4a"),
 };
 for (const event in eventSoundDict) {
   htmx.on(event, () => {
@@ -32,6 +33,7 @@ for (const event in eventSoundDict) {
 
 let turnTickingIntervalID;
 htmx.on("MyTurn", () => {
+  clearInterval(turnTickingIntervalID);
   turnTickingIntervalID = setInterval(() => {
     tick.play();
   }, 1200);
