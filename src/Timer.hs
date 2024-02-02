@@ -5,7 +5,6 @@ module Timer (startTimer, stopTimer, restartTimer) where
 import CustomPrelude
 
 import App (App (..), AppGameState (..), Game (..), _InGame)
-import Data.UUID.V4 (nextRandom)
 import Game (
     GameState (..),
     Move (..),
@@ -24,20 +23,22 @@ startTimer a = do
         mSecondsToGuess <- preview secondsToGuessL <$> readTVarIO (a ^. #wsGameState)
         traverse_ (threadDelay . (* 1000000)) mSecondsToGuess
 
-        gs <- atomically $ do
+        join $ atomically $ do
             appGameState <- readTVar $ a ^. #wsGameState
-            let nextStateKey = 1 + appGameState ^. #stateKey
             case appGameState ^. #game of
                 (InGame gss) -> do
-                    let gs' = InGame $ makeMove gss TimeUp
-                    writeTVar (a ^. #wsGameState) $ appGameState{game = gs', stateKey = nextStateKey}
-                    writeTChan (appGameState ^. #chan) (nextStateKey, Left gs')
-                    pure gs'
-                x -> pure x
+                    let gss' = makeMove gss TimeUp
+                        gs' = InGame gss'
+                        nextStateKey = 1 + appGameState ^. #stateKey
+                        appGameState' =
+                            appGameState
+                                & (#game .~ gs')
+                                & (#stateKey .~ nextStateKey)
 
-        case gs ^? _InGame % to isGameOver of
-            Just True -> pure ()
-            _ -> go
+                    writeTVar (a ^. #wsGameState) appGameState'
+                    writeTChan (appGameState ^. #chan) (nextStateKey, Left gs')
+                    pure $ unless (isGameOver gss') go
+                _ -> pure $ pure ()
 
 stopTimer :: (MonadIO m) => App -> m ()
 stopTimer a = maybe (pure ()) cancel =<< readTVarIO (a ^. #wsGameStateTimer)

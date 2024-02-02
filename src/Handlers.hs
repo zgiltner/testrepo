@@ -8,14 +8,12 @@ module Handlers where
 
 import CustomPrelude
 
-import App (App (..), AppGameState (..), AppM, Game (..), StateKey, _InGame)
+import App (App (..), AppGameState (..), AppM, Game (..), StateKey)
 import CaseInsensitive (CaseInsensitiveText)
 import qualified CircularZipper as CZ
 import qualified Data.Aeson as Aeson
 import Data.Aeson.QQ (aesonQQ)
 import qualified Data.Text.Lazy as TL
-import Data.UUID (UUID)
-import Data.UUID.V4 (nextRandom)
 import Game (
     GameState (..),
     Move (..),
@@ -300,21 +298,21 @@ ws api me c = do
                         Right msg -> do
                             atomically $ do
                                 appGameState <- readTVar $ a ^. #wsGameState
-                                writeTChan myChan (appGameState ^. #stateKey, Right $ guessInput (msg ^. #guess) False False False me)
+                                writeTChan myChan (appGameState ^. #stateKey, Right $ guessInput (appGameState ^. #stateKey) (msg ^. #guess) False False False me)
                     listener
                 _ -> listener
         sender :: AppM ()
         sender = do
-            mMsg <- atomically $ do
+            sendData <- atomically $ do
                 (stateKey, msg) <- readTChan myChan
                 appGameState <- readTVar $ a ^. #wsGameState
-                pure $ if stateKey == (appGameState ^. #stateKey) then Just (stateKey, msg) else Nothing
-
-            liftIO $ for_ mMsg $ \msg -> WS.sendTextData @Text c $ case msg of
-                (stateKey, Left gs) ->
-                    decodeUtf8Lenient
-                        $ BSL.toStrict
-                        $ Aeson.encode [aesonQQ|{html: #{renderText $ gameStateUI api me stateKey gs}, events: #{getGameStateEvents me gs}}|]
-                (_, Right h) -> TL.toStrict $ renderText h
+                guard $ stateKey == (appGameState ^. #stateKey)
+                pure $ WS.sendTextData @Text c $ case msg of
+                    Left gs ->
+                        decodeUtf8Lenient
+                            $ BSL.toStrict
+                            $ Aeson.encode [aesonQQ|{html: #{renderText $ gameStateUI api me stateKey gs}, events: #{getGameStateEvents me gs}}|]
+                    Right h -> TL.toStrict $ renderText h
+            liftIO sendData
             sender
     runConcurrently $ asum (Concurrently <$> [pingThread 0, listener, sender])

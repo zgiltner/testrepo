@@ -10,7 +10,6 @@ import App (Game (..), StateKey)
 import CaseInsensitive (CaseInsensitiveChar (..), CaseInsensitiveText (..))
 import CircularZipper (CircularZipper (..))
 import qualified CircularZipper as CZ
-import Data.UUID (UUID)
 import qualified Data.UUID as UUID
 import Game (
     GameState (..),
@@ -210,6 +209,7 @@ playerStateUI api me stateKey gs ps = do
                                 ]
                                 $ do
                                     guessInput
+                                        stateKey
                                         (maybe "" getCaseInsensitiveText $ ps ^. #lastWord)
                                         (me == ps ^. #id)
                                         (isPlayerTurn (gs ^. #players) ps)
@@ -229,8 +229,8 @@ playerStateUI api me stateKey gs ps = do
 playerInputId :: Bool -> PlayerId -> Text
 playerInputId isMe playerId = "input-" <> UUID.toText (getPlayerId playerId) <> "-" <> if isMe then "me" else "other"
 
-guessInput :: Text -> Bool -> Bool -> Bool -> PlayerId -> Html ()
-guessInput v isMe isMyTurn invaldGuess playerId = do
+guessInput :: StateKey -> Text -> Bool -> Bool -> Bool -> PlayerId -> Html ()
+guessInput stateKey v isMe isMyTurn invaldGuess playerId = do
     input_
         ( [ id_ $ playerInputId isMe playerId
           , name_ "guess"
