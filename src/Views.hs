@@ -20,6 +20,7 @@ import Game (
     isPlayerAlive,
     isPlayerTurn,
  )
+import GameStateEvent (GameStateEvent)
 import Lucid hiding (for_)
 import qualified Lucid
 import Lucid.Base (makeAttribute)
@@ -86,13 +87,13 @@ gameStateUI ::
     , IsElem
         ( Capture "stateId" UUID
             :> "start-over"
-            :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ()))
+            :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" GameStateEvent] (Html ()))
         )
         api
     , IsElem
         ( Capture "stateId" UUID
             :> "guess"
-            :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ()))
+            :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" GameStateEvent] (Html ()))
         )
         api
     ) =>
@@ -157,7 +158,7 @@ gameStateUI api me stateId game = div_ [id_ "gameState"] $ do
                 [ type_ "button"
                 , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
                 , tabindex_ "-1"
-                , hxPostSafe_ $ safeLink api (Proxy @(Capture "stateId" UUID :> "start-over" :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ())))) stateId
+                , hxPostSafe_ $ safeLink api (Proxy @(Capture "stateId" UUID :> "start-over" :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" GameStateEvent] (Html ())))) stateId
                 , hxTarget_ "#gameState"
                 ]
                 "Start A New Game"
@@ -178,7 +179,7 @@ playerStateUI ::
     ( IsElem
         ( Capture "stateId" UUID
             :> "guess"
-            :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ()))
+            :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" GameStateEvent] (Html ()))
         )
         api
     ) =>
@@ -204,7 +205,7 @@ playerStateUI api me stateId gs ps = do
                             div_ [id_ $ "player-state-lives-" <> UUID.toText (getPlayerId me)] $ replicateM_ (ps ^. #lives) $ toHtml ("❤️" :: String)
                             form_
                                 [ id_ $ "player-state-form-" <> UUID.toText (getPlayerId me)
-                                , hxPostSafe_ $ safeLink api (Proxy @(Capture "stateId" UUID :> "guess" :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ())))) stateId
+                                , hxPostSafe_ $ safeLink api (Proxy @(Capture "stateId" UUID :> "guess" :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" GameStateEvent] (Html ())))) stateId
                                 , hxTarget_ "#gameState"
                                 ]
                                 $ do

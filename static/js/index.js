@@ -18,11 +18,11 @@ htmx.defineExtension("transform-ws-response", {
 const tick = new Audio("/static/sounds/Buttons and Navigation/Button 5.m4a");
 
 const eventSoundDict = {
-  wrongGuess: new Audio("/static/sounds/Errors and Cancel/Cancel 1.m4a"),
-  correctGuess: new Audio("/static/sounds/Complete and Success/Success 2.m4a"),
-  myTurn: new Audio("/static/sounds/Notifications and Alerts/Alert 3.m4a"),
-  timeUp: new Audio("/static/sounds/Errors and Cancel/Error 5.m4a"),
-  iWin: new Audio("/static/sounds/Notifications and Alerts/Notification 9.m4a"),
+  WrongGuess: new Audio("/static/sounds/Errors and Cancel/Cancel 1.m4a"),
+  CorrectGuess: new Audio("/static/sounds/Complete and Success/Success 2.m4a"),
+  MyTurn: new Audio("/static/sounds/Notifications and Alerts/Alert 3.m4a"),
+  TimeUp: new Audio("/static/sounds/Errors and Cancel/Error 5.m4a"),
+  IWin: new Audio("/static/sounds/Notifications and Alerts/Notification 9.m4a"),
 };
 for (const event in eventSoundDict) {
   htmx.on(event, () => {
@@ -31,17 +31,20 @@ for (const event in eventSoundDict) {
 }
 
 let turnTickingIntervalID;
-htmx.on("myTurn", () => {
+htmx.on("MyTurn", () => {
   turnTickingIntervalID = setInterval(() => {
     tick.play();
   }, 1200);
 });
-htmx.on("timeUp", () => {
+htmx.on("TimeUp", () => {
   clearInterval(turnTickingIntervalID);
 });
-htmx.on("correctGuess", () => {
+htmx.on("CorrectGuess", () => {
   clearInterval(turnTickingIntervalID);
 });
-htmx.on("gameOver", () => {
+htmx.on("GameOver", () => {
+  clearInterval(turnTickingIntervalID);
+});
+htmx.on("SettingsUpdate", () => {
   clearInterval(turnTickingIntervalID);
 });
