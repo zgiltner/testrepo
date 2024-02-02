@@ -1,5 +1,5 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE QuasiQuotes #-}
 
 module Views where
@@ -114,10 +114,10 @@ gameStateUI api me stateId game = div_ [id_ "gameState"] $ do
                     , autocomplete_ "off"
                     , hxPostSafe_ $ safeLink api (Proxy @(Capture "stateId" UUID :> "settings" :> Post '[HTML] (Html ()))) stateId
                     , type_ "number"
-                    , value_ $ tshow settings.secondsToGuess
+                    , value_ $ tshow $ settings ^. #secondsToGuess
                     ]
             h1_ "Players"
-            ul_ $ for_ (HashMap.toList settings.players) $ \(pId, mName) -> li_ $ do
+            ul_ $ for_ (HashMap.toList $ settings ^. #players) $ \(pId, mName) -> li_ $ do
                 button_
                     [ type_ "button"
                     , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-red-500 text-white hover:bg-red-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
@@ -136,7 +136,7 @@ gameStateUI api me stateId game = div_ [id_ "gameState"] $ do
                       , autocomplete_ "off"
                       ]
                     <> [disabled_ "" | not isMe]
-            unless (me `HashMap.member` settings.players)
+            unless (me `HashMap.member` (settings ^. #players))
                 $ button_
                     [ type_ "button"
                     , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
@@ -144,7 +144,7 @@ gameStateUI api me stateId game = div_ [id_ "gameState"] $ do
                     , hxTarget_ "#gameState"
                     ]
                     "Join Game"
-            unless (null settings.players)
+            unless (null $ settings ^. #players)
                 $ button_
                     [ type_ "button"
                     , class_ "py-2 px-3 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-transparent bg-green-500 text-white hover:bg-green-600 disabled:opacity-50 disabled:pointer-events-none dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600"
@@ -166,13 +166,13 @@ gameStateUI api me stateId game = div_ [id_ "gameState"] $ do
                     [ id_ "given-letters"
                     , class_ "text-2xl font-mono"
                     ]
-                $ toHtml gs.givenLetters
+                $ toHtml (gs ^. #givenLetters)
             ul_
                 [ id_ "player-states"
                 , class_ "space-y-3"
                 ]
                 $ do
-                    traverse_ (playerStateUI api me stateId gs) $ playerFirst me gs.players
+                    traverse_ (playerStateUI api me stateId gs) $ playerFirst me $ gs ^. #players
 
 playerStateUI ::
     ( IsElem
@@ -194,14 +194,14 @@ playerStateUI api me stateId gs ps = do
         , class_ $ "p-2 rounded-lg " <> bg <> " " <> outline
         ]
         $ do
-            h1_ $ maybe (toHtml $ T.pack $ show $ getPlayerId ps.id) toHtml ps.name
+            h1_ $ maybe (toHtml $ T.pack $ show $ getPlayerId $ ps ^. #id) toHtml $ ps ^. #name
             if isPlayerAlive ps
                 then
                     if isGameOver gs
                         then h1_ [class_ "text-center text-2xl"] "✨✨✨✨✨WINNER✨✨✨✨✨"
                         else do
-                            letterUI ps.letters
-                            div_ [id_ $ "player-state-lives-" <> UUID.toText (getPlayerId me)] $ replicateM_ ps.lives $ toHtml ("❤️" :: String)
+                            letterUI $ ps ^. #letters
+                            div_ [id_ $ "player-state-lives-" <> UUID.toText (getPlayerId me)] $ replicateM_ (ps ^. #lives) $ toHtml ("❤️" :: String)
                             form_
                                 [ id_ $ "player-state-form-" <> UUID.toText (getPlayerId me)
                                 , hxPostSafe_ $ safeLink api (Proxy @(Capture "stateId" UUID :> "guess" :> Post '[HTML] (Headers '[Header "HX-Trigger-After-Swap" Text] (Html ())))) stateId
@@ -209,15 +209,15 @@ playerStateUI api me stateId gs ps = do
                                 ]
                                 $ do
                                     guessInput
-                                        (maybe "" getCaseInsensitiveText ps.lastWord)
-                                        (me == ps.id)
-                                        (isPlayerTurn gs.players ps)
-                                        (ps.tries > 0)
-                                        ps.id
+                                        (maybe "" getCaseInsensitiveText $ ps ^. #lastWord)
+                                        (me == ps ^. #id)
+                                        (isPlayerTurn (gs ^. #players) ps)
+                                        (ps ^. #tries > 0)
+                                        (ps ^. #id)
                 else h1_ [class_ "text-center text-2xl"] "☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️☠️"
   where
     outline =
-        if isPlayerTurn gs.players ps
+        if isPlayerTurn (gs ^. #players) ps
             then if isGameOver gs then "bg-emerald-600" else "border-4 border-blue-700"
             else "border-2"
     bg =
@@ -262,4 +262,4 @@ letterUI ls = for_ [(CaseInsensitiveChar 'A') .. (CaseInsensitiveChar 'Z')] $ \l
 playerFirst :: PlayerId -> CircularZipper PlayerState -> [PlayerState]
 playerFirst pId cz = CZ.current playerCurrent : CZ.rights playerCurrent <> CZ.lefts playerCurrent
   where
-    playerCurrent = fromMaybe cz $ CZ.findRight ((== pId) . (.id)) cz
+    playerCurrent = fromMaybe cz $ CZ.findRight ((== pId) . view #id) cz
