@@ -1,10 +1,23 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedLabels #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
-module Handlers where
+module Handlers (
+    home,
+    ws,
+    joinHandler,
+    leave,
+    settingsHandler,
+    name,
+    start,
+    startOver,
+    guess,
+    LeavePost (..),
+    SettingsPost (..),
+    NamePost (..),
+    GuessPost (..),
+) where
 
 import CustomPrelude
 
@@ -12,7 +25,6 @@ import App (App (..), AppGameState (..), AppGameStateChanMsg (..), AppM, Game (.
 import CaseInsensitive (CaseInsensitiveText)
 import qualified CircularZipper as CZ
 import qualified Data.Aeson as Aeson
-import Data.Aeson.QQ (aesonQQ)
 import Game (
     GameState (..),
     Move (..),
@@ -121,14 +133,14 @@ updateGameState stateKey f = do
                     gs' <$ writeTChan (appGameState ^. #chan) AppGameStateChanged
                 else pure $ appGameState ^. #game
 
-join ::
+joinHandler ::
     ( APIConstraints api
     ) =>
     Proxy api ->
     PlayerId ->
     StateKey ->
     AppM (Html ())
-join api me stateKey = do
+joinHandler api me stateKey = do
     gs <- updateGameState stateKey
         $ \case
             InLobby settings -> InLobby $ settings & #players %~ HashMap.insert me Nothing
@@ -162,7 +174,7 @@ data SettingsPost = SettingsPost
 
 instance FromForm SettingsPost
 
-settings ::
+settingsHandler ::
     ( APIConstraints api
     ) =>
     Proxy api ->
@@ -170,7 +182,7 @@ settings ::
     StateKey ->
     SettingsPost ->
     AppM (Html ())
-settings api me stateKey p = do
+settingsHandler api me stateKey p = do
     gs <- updateGameState stateKey
         $ \case
             InLobby settings -> InLobby $ settings & #secondsToGuess .~ p ^. #secondsToGuess
@@ -334,7 +346,7 @@ ws api me c = do
                                 guard (msg ^. #stateKey == appGameState ^. #stateKey)
                                 writeTChan myChan
                                     $ NonStateChangeMsg (appGameState ^. #stateKey)
-                                    $ guessInput (appGameState ^. #stateKey) (msg ^. #guess) False False False me
+                                    $ guessInput (msg ^. #guess) False False False me
                     listener
                 _ -> listener
         sender :: AppM ()

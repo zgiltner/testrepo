@@ -77,9 +77,9 @@ server mHotReload playerId =
 
 stateChangeServer :: PlayerId -> ServerT StateChangeAPI AppM
 stateChangeServer playerId stateId =
-    Handlers.join stateChangeApi playerId stateId
+    Handlers.joinHandler stateChangeApi playerId stateId
         :<|> Handlers.leave stateChangeApi playerId stateId
-        :<|> Handlers.settings stateChangeApi playerId stateId
+        :<|> Handlers.settingsHandler stateChangeApi playerId stateId
         :<|> Handlers.name stateChangeApi playerId stateId
         :<|> Handlers.start stateChangeApi playerId stateId
         :<|> Handlers.startOver stateChangeApi playerId stateId

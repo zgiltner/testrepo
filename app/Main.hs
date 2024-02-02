@@ -2,9 +2,8 @@ module Main (main) where
 
 import CustomPrelude
 
-import App (App (..))
+import App (App (..), AppGameState (..), Game (..))
 import CaseInsensitive (CaseInsensitiveText (..))
-import Data.UUID.V4 (nextRandom)
 import Game (initialSettings)
 import Network.Wai.Handler.Warp
 import qualified RIO.HashSet as HashSet
@@ -24,17 +23,17 @@ main = do
     staticDir <- fromMaybe "static" <$> lookupEnv "STATIC_DIR"
 
     stdGen <- newStdGen
-    stateId <- nextRandom
 
     wsGameState <- do
-        let s =
-                Left
+        let stateKey = 0
+            game =
+                InLobby
                     $ initialSettings
                         stdGen
                         wordsSet
                         givenLettersSet
         chan <- newTChanIO
-        newTVarIO ((stateId, s), chan)
+        newTVarIO AppGameState{..}
 
     wsGameStateTimer <- newTVarIO Nothing
 

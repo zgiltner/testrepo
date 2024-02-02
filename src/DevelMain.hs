@@ -6,7 +6,6 @@ import CustomPrelude
 
 import App (App (..), AppGameState (..), Game (..))
 import qualified Data.HashSet as HashSet
-import Data.UUID.V4 (nextRandom)
 import Game (initialSettings)
 import Lucid (Html, script_, src_)
 import Network.HTTP.Types (status400)
