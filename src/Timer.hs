@@ -4,7 +4,7 @@ module Timer (startTimer, stopTimer, restartTimer) where
 
 import CustomPrelude
 
-import App (App (..), AppGameState (..), Game (..), _InGame)
+import App (App (..), AppGameState (..), AppGameStateChanMsg (AppGameStateChanged), Game (..), _InGame)
 import Game (
     GameState (..),
     Move (..),
@@ -27,17 +27,13 @@ startTimer a = do
             appGameState <- readTVar $ a ^. #wsGameState
             case appGameState ^. #game of
                 (InGame gss) -> do
-                    let gss' = makeMove gss TimeUp
-                        gs' = InGame gss'
-                        nextStateKey = 1 + appGameState ^. #stateKey
-                        appGameState' =
-                            appGameState
-                                & (#game .~ gs')
-                                & (#stateKey .~ nextStateKey)
-
-                    writeTVar (a ^. #wsGameState) appGameState'
-                    writeTChan (appGameState ^. #chan) (nextStateKey, Left gs')
-                    pure $ unless (isGameOver gss') go
+                    let gs' = makeMove gss TimeUp
+                    writeTVar (a ^. #wsGameState)
+                        $ appGameState
+                        & (#game .~ InGame gs')
+                        & (#stateKey %~ (+ 1))
+                    writeTChan (appGameState ^. #chan) AppGameStateChanged
+                    pure $ unless (isGameOver gs') go
                 _ -> pure $ pure ()
 
 stopTimer :: (MonadIO m) => App -> m ()

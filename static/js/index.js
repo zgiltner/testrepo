@@ -1,7 +1,28 @@
-htmx.defineExtension("transform-ws-response", {
+const getCurrentStateKey = () =>
+  parseInt(
+    document.getElementById("gameState")?.getAttribute("data-state-key")
+  );
+
+htmx.defineExtension("game-state-ws", {
   transformResponse: function (resp, xhr, elt) {
     try {
-      const { events, html } = JSON.parse(resp);
+      const { events, html, stateKey, chanMsg } = JSON.parse(resp);
+      switch (chanMsg) {
+        case "NonStateChangeMsg": {
+          if (getCurrentStateKey() !== stateKey) {
+            return null;
+          }
+          break;
+        }
+        case "AppGameStateChanged": {
+          if (stateKey <= getCurrentStateKey()) {
+            return null;
+          }
+          break;
+        }
+        default:
+          throw new Error(`Unrecognized chanMsg: ${chanMsg}`);
+      }
       if (events) {
         console.log(events);
         for (const event of events) {
@@ -11,6 +32,11 @@ htmx.defineExtension("transform-ws-response", {
       return html;
     } catch {
       return resp;
+    }
+  },
+  onEvent: function (name, evt) {
+    if (name === "htmx:wsConfigSend") {
+      evt.detail.parameters.stateKey = getCurrentStateKey();
     }
   },
 });

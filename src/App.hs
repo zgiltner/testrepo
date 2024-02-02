@@ -3,10 +3,12 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module App (AppM, App (..), Game (..), AppGameState (..), StateKey (..), _InGame, _InLobby) where
+module App (AppM, App (..), Game (..), AppGameState (..), StateKey (..), AppGameStateChanMsg (..), _InGame, _InLobby) where
 
 import CustomPrelude
 
+import Data.Aeson (ToJSON)
+import Data.Aeson.Types (FromJSON)
 import Game (GameState, Settings)
 import Lucid (Html)
 import Optics.TH (makePrisms)
@@ -19,13 +21,16 @@ makePrisms ''Game
 type AppM = RIO App
 
 newtype StateKey = StateKey {getStateKey :: Int}
-    deriving stock (Eq, Show)
-    deriving newtype (Num, Display, FromHttpApiData, ToHttpApiData)
+    deriving newtype (Eq, Show, Num, Display, ToJSON, FromJSON, FromHttpApiData, ToHttpApiData)
+
+data AppGameStateChanMsg
+    = AppGameStateChanged
+    | NonStateChangeMsg StateKey (Html ())
 
 data AppGameState = AppGameState
     { stateKey :: StateKey
     , game :: Game
-    , chan :: TChan (StateKey, Either Game (Html ()))
+    , chan :: TChan AppGameStateChanMsg
     }
     deriving (Generic)
 

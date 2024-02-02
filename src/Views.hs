@@ -101,7 +101,7 @@ gameStateUI ::
     StateKey ->
     Game ->
     Html ()
-gameStateUI api me stateKey game = div_ [id_ "gameState"] $ do
+gameStateUI api me stateKey game = div_ [id_ "gameState", makeAttribute "data-state-key" (tshow stateKey)] $ do
     case game of
         InLobby settings -> do
             h1_ "Settings"
@@ -250,7 +250,7 @@ guessInput stateKey v isMe isMyTurn invaldGuess playerId = do
             <> [disabled_ "" | not isActivePlayersTurn]
             <> [autofocus_ | isActivePlayersTurn]
             <> [makeAttribute "ws-send" "" | isActivePlayersTurn]
-            <> [hxTrigger_ "keyup changed delay:200ms" | isActivePlayersTurn]
+            <> [hxTrigger_ "keyup changed delay:50ms" | isActivePlayersTurn]
         )
   where
     isActivePlayersTurn = isMe && isMyTurn

@@ -8,12 +8,11 @@ module Handlers where
 
 import CustomPrelude
 
-import App (App (..), AppGameState (..), AppM, Game (..), StateKey)
+import App (App (..), AppGameState (..), AppGameStateChanMsg (..), AppM, Game (..), StateKey)
 import CaseInsensitive (CaseInsensitiveText)
 import qualified CircularZipper as CZ
 import qualified Data.Aeson as Aeson
 import Data.Aeson.QQ (aesonQQ)
-import qualified Data.Text.Lazy as TL
 import Game (
     GameState (..),
     Move (..),
@@ -100,7 +99,7 @@ home api mHotreload me = do
         body_
             $ div_
                 [ id_ "ws"
-                , hxExt_ "ws,transform-ws-response"
+                , hxExt_ "ws,game-state-ws"
                 , makeAttribute "ws-connect" $ "/" <> toUrlPiece (safeLink api (Proxy @("ws" :> WebSocket)))
                 , class_ "container mx-auto px-4 py-4"
                 ]
@@ -118,8 +117,8 @@ updateGameState stateKey f = do
                     let
                         gs' = f $ appGameState ^. #game
                         stateKey' = stateKey + 1
-                    writeTChan (appGameState ^. #chan) (stateKey', Left gs')
-                    gs' <$ writeTVar (a ^. #wsGameState) appGameState{stateKey = stateKey', game = gs'}
+                    writeTVar (a ^. #wsGameState) appGameState{stateKey = stateKey', game = gs'}
+                    gs' <$ writeTChan (appGameState ^. #chan) AppGameStateChanged
                 else pure $ appGameState ^. #game
 
 join ::
@@ -266,12 +265,46 @@ guess api me stateKey p = do
                 else pure $ addHeader WrongGuess html
         _ -> pure $ noHeader html
 
-newtype WsMsg = WsMsg
+data WsMsg = WsMsg
     { guess :: Text
+    , stateKey :: StateKey
     }
     deriving stock (Show, Generic)
     deriving anyclass (Aeson.FromJSON)
 
+data WsResponseMsg = WsResponseMsg
+    { html :: Html ()
+    , events :: Maybe [GameStateEvent]
+    , stateKey :: StateKey
+    , chanMsg :: AppGameStateChanMsg
+    }
+    deriving stock (Generic)
+
+wsResponseMsgKeyValues :: (Aeson.KeyValue a) => WsResponseMsg -> [a]
+wsResponseMsgKeyValues msg =
+    [ "html" Aeson..= (msg ^. #html % to renderText)
+    , "events" Aeson..= (msg ^. #events)
+    , "stateKey" Aeson..= (msg ^. #stateKey)
+    , "chanMsg"
+        Aeson..= (msg ^. #chanMsg % to chanMsgJSON)
+    ]
+  where
+    chanMsgJSON :: AppGameStateChanMsg -> Text
+    chanMsgJSON = \case
+        NonStateChangeMsg _ _ -> "NonStateChangeMsg"
+        AppGameStateChanged -> "AppGameStateChanged"
+
+instance Aeson.ToJSON WsResponseMsg where
+    toJSON = Aeson.object . wsResponseMsgKeyValues
+    toEncoding =
+        Aeson.pairs . fold . wsResponseMsgKeyValues
+
+sendWsMsg :: WS.Connection -> WsResponseMsg -> IO ()
+sendWsMsg c =
+    WS.sendTextData @Text c
+        . decodeUtf8Lenient
+        . BSL.toStrict
+        . Aeson.encode
 ws ::
     ( APIConstraints api
     ) =>
@@ -298,21 +331,28 @@ ws api me c = do
                         Right msg -> do
                             atomically $ do
                                 appGameState <- readTVar $ a ^. #wsGameState
-                                writeTChan myChan (appGameState ^. #stateKey, Right $ guessInput (appGameState ^. #stateKey) (msg ^. #guess) False False False me)
+                                guard (msg ^. #stateKey == appGameState ^. #stateKey)
+                                writeTChan myChan
+                                    $ NonStateChangeMsg (appGameState ^. #stateKey)
+                                    $ guessInput (appGameState ^. #stateKey) (msg ^. #guess) False False False me
                     listener
                 _ -> listener
         sender :: AppM ()
         sender = do
             sendData <- atomically $ do
-                (stateKey, msg) <- readTChan myChan
+                chanMsg <- readTChan myChan
                 appGameState <- readTVar $ a ^. #wsGameState
-                guard $ stateKey == (appGameState ^. #stateKey)
-                pure $ WS.sendTextData @Text c $ case msg of
-                    Left gs ->
-                        decodeUtf8Lenient
-                            $ BSL.toStrict
-                            $ Aeson.encode [aesonQQ|{html: #{renderText $ gameStateUI api me stateKey gs}, events: #{getGameStateEvents me gs}}|]
-                    Right h -> TL.toStrict $ renderText h
+                pure $ case chanMsg of
+                    AppGameStateChanged -> do
+                        let
+                            gs = appGameState ^. #game
+                            stateKey = appGameState ^. #stateKey
+                            html = gameStateUI api me stateKey gs
+                            events = getGameStateEvents me gs
+                        sendWsMsg c WsResponseMsg{..}
+                    NonStateChangeMsg stateKey html -> do
+                        guard $ stateKey == (appGameState ^. #stateKey)
+                        sendWsMsg c WsResponseMsg{events = Nothing, ..}
             liftIO sendData
             sender
     runConcurrently $ asum (Concurrently <$> [pingThread 0, listener, sender])
