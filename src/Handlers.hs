@@ -120,17 +120,16 @@ home api mHotreload me = do
 updateGameState :: StateKey -> (Game -> Game) -> AppM (StateKey, Game)
 updateGameState stateKey f = do
     a <- ask
-    liftIO $ do
-        atomically $ do
-            appGameState <- readTVar $ a ^. #wsGameState
-            if (appGameState ^. #stateKey) == stateKey
-                then do
-                    let
-                        gs' = f $ appGameState ^. #game
-                        stateKey' = stateKey + 1
-                    writeTVar (a ^. #wsGameState) appGameState{stateKey = stateKey', game = gs'}
-                    (stateKey', gs') <$ writeTChan (appGameState ^. #chan) AppGameStateChanged
-                else pure (appGameState ^. #stateKey, appGameState ^. #game)
+    atomically $ do
+        appGameState <- readTVar $ a ^. #wsGameState
+        if (appGameState ^. #stateKey) == stateKey
+            then do
+                let
+                    gs' = f $ appGameState ^. #game
+                    stateKey' = stateKey + 1
+                writeTVar (a ^. #wsGameState) appGameState{stateKey = stateKey', game = gs'}
+                (stateKey', gs') <$ writeTChan (appGameState ^. #chan) AppGameStateChanged
+            else pure (appGameState ^. #stateKey, appGameState ^. #game)
 
 joinHandler ::
     ( APIConstraints api
@@ -343,14 +342,14 @@ ws api me c = do
                         Right msg -> do
                             atomically $ do
                                 appGameState <- readTVar $ a ^. #wsGameState
-                                guard (msg ^. #stateKey == appGameState ^. #stateKey)
-                                writeTChan myChan
+                                when (msg ^. #stateKey == appGameState ^. #stateKey)
+                                    $ writeTChan myChan
                                     $ PlayerTyping (appGameState ^. #stateKey) me (msg ^. #guess)
                     listener
                 _ -> listener
         sender :: AppM ()
         sender = do
-            liftIO $ join $ atomically $ do
+            join $ atomically $ do
                 chanMsg <- readTChan myChan
                 appGameState <- readTVar $ a ^. #wsGameState
                 pure $ case chanMsg of
@@ -358,15 +357,17 @@ ws api me c = do
                         let
                             gs = appGameState ^. #game
                             stateKey = appGameState ^. #stateKey
-                        sendWsMsg
-                            c
-                            WsResponseMsg
-                                { html = gameStateUI api me stateKey gs
-                                , events = getGameStateEvents me gs
-                                , ..
-                                }
+                        liftIO
+                            $ sendWsMsg
+                                c
+                                WsResponseMsg
+                                    { html = gameStateUI api me stateKey gs
+                                    , events = getGameStateEvents me gs
+                                    , ..
+                                    }
                     PlayerTyping stateKey typer guess ->
                         when (stateKey == (appGameState ^. #stateKey) && typer /= me)
+                            $ liftIO
                             $ sendWsMsg
                                 c
                                 WsResponseMsg
@@ -374,6 +375,5 @@ ws api me c = do
                                     , html = guessInput guess False False False typer
                                     , ..
                                     }
-            liftIO sendMsg
             sender
     runConcurrently $ asum (Concurrently <$> [pingThread 0, listener, sender])

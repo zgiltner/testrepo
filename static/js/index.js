@@ -18,37 +18,32 @@
       }
 
       if (name === "htmx:wsBeforeMessage") {
-        try {
-          const { events, html, stateKey, chanMsg } = JSON.parse(
-            evt.detail.message
-          );
-          switch (chanMsg) {
-            case "PlayerTyping": {
-              if (currentStateKey !== stateKey) {
-                evt.preventDefault();
-                return;
-              }
-              break;
+        const { events, html, stateKey, chanMsg } = JSON.parse(
+          evt.detail.message
+        );
+        switch (chanMsg) {
+          case "PlayerTyping": {
+            if (currentStateKey !== stateKey) {
+              evt.preventDefault();
+              return;
             }
-            case "AppGameStateChanged": {
-              if (stateKey <= currentStateKey) {
-                evt.preventDefault();
-                return;
-              }
-              break;
-            }
-            default:
-              throw new Error(`Unrecognized chanMsg: ${chanMsg}`);
+            break;
           }
-          if (events) {
-            console.log(events);
-            for (const event of events) {
-              if (event) htmx.trigger("body", event);
+          case "AppGameStateChanged": {
+            if (stateKey <= currentStateKey) {
+              evt.preventDefault();
+              return;
             }
+            break;
           }
-        } catch (e) {
-          console.error(e);
-          evt.preventDefault();
+          default:
+            throw new Error(`Unrecognized chanMsg: ${chanMsg}`);
+        }
+        if (events) {
+          console.log(events);
+          for (const event of events) {
+            if (event) htmx.trigger("body", event);
+          }
         }
       }
     },
