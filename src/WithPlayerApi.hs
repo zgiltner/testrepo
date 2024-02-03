@@ -6,7 +6,7 @@ module WithPlayerApi (PlayerId (..), API, withPlayerApi) where
 import CustomPrelude
 
 import Control.Monad.Error.Class (MonadError)
-import Data.Aeson (FromJSON)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Coerce (coerce)
 import Data.Maybe (fromMaybe)
 import Data.Text.Encoding (decodeUtf8)
@@ -23,7 +23,7 @@ import Web.Cookie (SetCookie (..), defaultSetCookie, parseCookies)
 
 newtype PlayerId = PlayerId {getPlayerId :: UUID}
     deriving stock (Eq, Show)
-    deriving newtype (Hashable, FromJSON)
+    deriving newtype (Hashable, ToJSON, FromJSON)
 
 instance FromHttpApiData PlayerId where
     parseQueryParam = maybe (Left "PlayerId not a valid UUID") (Right . PlayerId) . UUID.fromText

@@ -225,13 +225,13 @@ playerStateUI api me stateKey gs ps = do
             then if isGameOver gs then "bg-green-600" else ""
             else "bg-red-600"
 
-playerInputId :: Bool -> PlayerId -> Text
-playerInputId isMe playerId = "input-" <> UUID.toText (getPlayerId playerId) <> "-" <> if isMe then "me" else "other"
+playerInputId :: PlayerId -> Text
+playerInputId playerId = "input-" <> UUID.toText (getPlayerId playerId)
 
 guessInput :: Text -> Bool -> Bool -> Bool -> PlayerId -> Html ()
 guessInput v isMe isMyTurn invaldGuess playerId = do
     input_
-        ( [ id_ $ playerInputId isMe playerId
+        ( [ id_ $ playerInputId playerId
           , name_ "guess"
           , class_
                 $ "border-2 caret-blue-900"

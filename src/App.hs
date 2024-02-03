@@ -10,10 +10,10 @@ import CustomPrelude
 import Data.Aeson (ToJSON)
 import Data.Aeson.Types (FromJSON)
 import Game (GameState, Settings)
-import Lucid (Html)
 import Optics.TH (makePrisms)
 import qualified RIO
 import Servant (FromHttpApiData, ToHttpApiData)
+import WithPlayerApi (PlayerId)
 
 data Game = InLobby Settings | InGame GameState
 makePrisms ''Game
@@ -25,7 +25,7 @@ newtype StateKey = StateKey {getStateKey :: Int}
 
 data AppGameStateChanMsg
     = AppGameStateChanged
-    | NonStateChangeMsg StateKey (Html ())
+    | PlayerTyping StateKey PlayerId Text
 
 data AppGameState = AppGameState
     { stateKey :: StateKey

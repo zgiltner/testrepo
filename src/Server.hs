@@ -83,7 +83,7 @@ stateChangeServer playerId stateId =
         :<|> Handlers.name stateChangeApi playerId stateId
         :<|> Handlers.start stateChangeApi playerId stateId
         :<|> Handlers.startOver stateChangeApi playerId stateId
-        :<|> Handlers.guess stateChangeApi playerId stateId
+        :<|> Handlers.guessHandler stateChangeApi playerId stateId
 
 app :: App -> Maybe (Html ()) -> Application
 app a = serve totalApi . totalApiServer a

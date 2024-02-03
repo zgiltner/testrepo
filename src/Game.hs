@@ -95,23 +95,14 @@ makeMove gs = \case
         | isValidGuess gs g ->
             pickNewGivenLetters
                 $ gs
-                & ( #players
-                        %~ goToNextPlayer
-                        . updateCurrent (validGuessForPlayer g)
-                  )
-                & ( #alreadyUsedWords
-                        %~ HashSet.insert g
-                  )
-                & #round
-                %~ (+ 1)
+                & (#players %~ goToNextPlayer . updateCurrent (validGuessForPlayer g))
+                & (#alreadyUsedWords %~ HashSet.insert g)
+                & (#round %~ (+ 1))
         | otherwise -> gs & #players %~ updateCurrent (#tries %~ (+ 1))
     TimeUp ->
         gs
-            & #players
-            %~ goToNextPlayer
-            . updateCurrent timeUpForPlayer
-            & #round
-            %~ (+ 1)
+            & (#players %~ goToNextPlayer . updateCurrent timeUpForPlayer)
+            & (#round %~ (+ 1))
 
 pickNewGivenLetters :: GameState -> GameState
 pickNewGivenLetters gs =
@@ -149,10 +140,7 @@ isPlayerAlive ps = ps ^. #lives > 0
 
 isValidGuess :: GameState -> CaseInsensitiveText -> Bool
 isValidGuess gs g =
-    ( gs
-        ^. #givenLetters
-    )
-        `CaseInsensitive.isInfixOf` g
+    ((gs ^. #givenLetters) `CaseInsensitive.isInfixOf` g)
         && not (g `HashSet.member` (gs ^. #alreadyUsedWords))
         && (g `HashSet.member` (gs ^. #settings % #validWords))
 

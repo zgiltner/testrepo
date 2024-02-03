@@ -12,7 +12,7 @@ module Handlers (
     name,
     start,
     startOver,
-    guess,
+    guessHandler,
     LeavePost (..),
     SettingsPost (..),
     NamePost (..),
@@ -120,7 +120,6 @@ home api mHotreload me = do
 updateGameState :: StateKey -> (Game -> Game) -> AppM (StateKey, Game)
 updateGameState stateKey f = do
     a <- ask
-    logDebug . display . view #stateKey =<< readTVarIO (a ^. #wsGameState)
     liftIO $ do
         atomically $ do
             appGameState <- readTVar $ a ^. #wsGameState
@@ -247,7 +246,7 @@ newtype GuessPost = GuessPost {guess :: CaseInsensitiveText}
 
 instance FromForm GuessPost
 
-guess ::
+guessHandler ::
     ( APIConstraints api
     ) =>
     Proxy api ->
@@ -255,7 +254,7 @@ guess ::
     StateKey ->
     GuessPost ->
     AppM (Headers '[Header "HX-Trigger-After-Swap" GameStateEvent] (Html ()))
-guess api me stateKey p = do
+guessHandler api me stateKey p = do
     (stateKey', gs) <- updateGameState stateKey $ \case
         InGame gs -> InGame $ makeMove gs $ Guess $ p ^. #guess
         x -> x
@@ -303,7 +302,7 @@ wsResponseMsgKeyValues msg =
   where
     chanMsgJSON :: AppGameStateChanMsg -> Text
     chanMsgJSON = \case
-        NonStateChangeMsg _ _ -> "NonStateChangeMsg"
+        PlayerTyping{} -> "PlayerTyping"
         AppGameStateChanged -> "AppGameStateChanged"
 
 instance Aeson.ToJSON WsResponseMsg where
@@ -318,7 +317,8 @@ sendWsMsg c =
         . BSL.toStrict
         . Aeson.encode
 ws ::
-    ( APIConstraints api
+    ( HasCallStack
+    , APIConstraints api
     ) =>
     Proxy api ->
     PlayerId ->
@@ -345,13 +345,12 @@ ws api me c = do
                                 appGameState <- readTVar $ a ^. #wsGameState
                                 guard (msg ^. #stateKey == appGameState ^. #stateKey)
                                 writeTChan myChan
-                                    $ NonStateChangeMsg (appGameState ^. #stateKey)
-                                    $ guessInput (msg ^. #guess) False False False me
+                                    $ PlayerTyping (appGameState ^. #stateKey) me (msg ^. #guess)
                     listener
                 _ -> listener
         sender :: AppM ()
         sender = do
-            sendData <- atomically $ do
+            liftIO $ join $ atomically $ do
                 chanMsg <- readTChan myChan
                 appGameState <- readTVar $ a ^. #wsGameState
                 pure $ case chanMsg of
@@ -359,12 +358,22 @@ ws api me c = do
                         let
                             gs = appGameState ^. #game
                             stateKey = appGameState ^. #stateKey
-                            html = gameStateUI api me stateKey gs
-                            events = getGameStateEvents me gs
-                        sendWsMsg c WsResponseMsg{..}
-                    NonStateChangeMsg stateKey html -> do
-                        guard $ stateKey == (appGameState ^. #stateKey)
-                        sendWsMsg c WsResponseMsg{events = Nothing, ..}
-            liftIO sendData
+                        sendWsMsg
+                            c
+                            WsResponseMsg
+                                { html = gameStateUI api me stateKey gs
+                                , events = getGameStateEvents me gs
+                                , ..
+                                }
+                    PlayerTyping stateKey typer guess ->
+                        when (stateKey == (appGameState ^. #stateKey) && typer /= me)
+                            $ sendWsMsg
+                                c
+                                WsResponseMsg
+                                    { events = Nothing
+                                    , html = guessInput guess False False False typer
+                                    , ..
+                                    }
+            liftIO sendMsg
             sender
     runConcurrently $ asum (Concurrently <$> [pingThread 0, listener, sender])

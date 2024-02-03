@@ -1,10 +1,10 @@
 (function () {
   htmx.defineExtension("game-state-ws", {
     transformResponse: function (resp, xhr, elt) {
-      try {
-        // This is a response with json, so let's grab the html prop
+      // This seems to be a ws response
+      if (xhr === null) {
         return JSON.parse(resp).html;
-      } catch {
+      } else {
         return resp;
       }
     },
@@ -23,7 +23,7 @@
             evt.detail.message
           );
           switch (chanMsg) {
-            case "NonStateChangeMsg": {
+            case "PlayerTyping": {
               if (currentStateKey !== stateKey) {
                 evt.preventDefault();
                 return;
