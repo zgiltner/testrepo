@@ -29,6 +29,7 @@ library
       CaseInsensitive
       CircularZipper
       CustomPrelude
+      DerivingStrategies
       DevelMain
       Game
       GameStateEvent

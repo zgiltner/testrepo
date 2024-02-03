@@ -1,7 +1,15 @@
-module CaseInsensitive (CaseInsensitiveText (..), CaseInsensitiveChar (..), caseInsensitiveLetters, length, isInfixOf) where
+{-# LANGUAGE DerivingStrategies #-}
+
+module CaseInsensitive (
+    CaseInsensitiveText (..),
+    CaseInsensitiveChar (..),
+    caseInsensitiveLetters,
+    isInfixOf,
+    length
+) where
 
 import CustomPrelude hiding (length)
-
+import Data.List ()
 import qualified Data.Char as C
 import Data.Coerce (coerce)
 import Data.Hashable (Hashable (..))
@@ -27,6 +35,7 @@ instance FromHttpApiData CaseInsensitiveText where
 isInfixOf :: CaseInsensitiveText -> CaseInsensitiveText -> Bool
 isInfixOf = coerce (T.isInfixOf `on` T.toCaseFold)
 
+-- Remove the 'length' function from the export list
 length :: CaseInsensitiveText -> Int
 length = coerce T.length
 

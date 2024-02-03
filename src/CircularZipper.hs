@@ -1,3 +1,5 @@
+{-# LANGUAGE DerivingStrategies #-}
+
 module CircularZipper (
     CircularZipper (..),
     current,
