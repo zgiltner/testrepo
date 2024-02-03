@@ -103,6 +103,8 @@ library
     , network-uri
     , nonempty-zipper
     , optics-core
+    , optics-extra
+    , optics-operators
     , optics-th
     , random
     , rapid
@@ -189,6 +191,8 @@ executable hs-bomb-party
     , network-uri
     , nonempty-zipper
     , optics-core
+    , optics-extra
+    , optics-operators
     , optics-th
     , random
     , rapid
@@ -279,6 +283,8 @@ test-suite hs-bomb-party-test
     , network-uri
     , nonempty-zipper
     , optics-core
+    , optics-extra
+    , optics-operators
     , optics-th
     , random
     , rapid

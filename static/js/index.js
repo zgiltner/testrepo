@@ -18,32 +18,37 @@
       }
 
       if (name === "htmx:wsBeforeMessage") {
-        const { events, html, stateKey, chanMsg } = JSON.parse(
-          evt.detail.message
-        );
-        switch (chanMsg) {
-          case "PlayerTyping": {
-            if (currentStateKey !== stateKey) {
-              evt.preventDefault();
-              return;
+        try {
+          const { events, html, stateKey, chanMsg } = JSON.parse(
+            evt.detail.message
+          );
+          switch (chanMsg) {
+            case "PlayerTyping": {
+              if (currentStateKey !== stateKey) {
+                evt.preventDefault();
+                return;
+              }
+              break;
             }
-            break;
-          }
-          case "AppGameStateChanged": {
-            if (stateKey <= currentStateKey) {
-              evt.preventDefault();
-              return;
+            case "AppGameStateChanged": {
+              if (stateKey <= currentStateKey) {
+                evt.preventDefault();
+                return;
+              }
+              break;
             }
-            break;
+            default:
+              throw new Error(`Unrecognized chanMsg: ${chanMsg}`);
           }
-          default:
-            throw new Error(`Unrecognized chanMsg: ${chanMsg}`);
-        }
-        if (events) {
-          console.log(events);
-          for (const event of events) {
-            if (event) htmx.trigger("body", event);
+          if (events) {
+            console.log(events);
+            for (const event of events) {
+              if (event) htmx.trigger("body", event);
+            }
           }
+        } catch (e) {
+          console.error(e);
+          evt.preventDefault();
         }
       }
     },
@@ -56,7 +61,9 @@
     CorrectGuess: new Audio(
       "/static/sounds/Complete and Success/Success 2.m4a"
     ),
-    MyTurn: new Audio("/static/sounds/Notifications and Alerts/Alert 3.m4a"),
+    MyTurn: new Audio(
+      "/static/sounds/Notifications and Alerts/Notification 3.m4a"
+    ),
     TimeUp: new Audio("/static/sounds/Errors and Cancel/Error 5.m4a"),
     IWin: new Audio(
       "/static/sounds/Notifications and Alerts/Notification 9.m4a"

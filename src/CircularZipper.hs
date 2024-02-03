@@ -1,6 +1,7 @@
 module CircularZipper (
     CircularZipper (..),
     current,
+    currentL,
     right,
     rights,
     left,
@@ -26,6 +27,9 @@ instance Traversable CircularZipper where
 
 current :: forall a. CircularZipper a -> a
 current = coerce @(Zipper a -> a) Z.current
+
+currentL :: forall a. Lens' (CircularZipper a) a
+currentL = lens current (coerce @(Zipper a -> a -> Zipper a) $ flip Z.replace)
 
 fromNonEmpty :: forall a. NonEmpty a -> CircularZipper a
 fromNonEmpty = coerce @(NonEmpty a -> Zipper a) Z.fromNonEmpty

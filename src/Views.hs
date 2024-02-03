@@ -200,7 +200,7 @@ playerStateUI api me stateKey gs ps = do
                     if isGameOver gs
                         then h1_ [class_ "text-center text-2xl"] "✨✨✨✨✨WINNER✨✨✨✨✨"
                         else do
-                            letterUI $ ps ^. #letters
+                            letterUI ps
                             div_ [id_ $ "player-state-lives-" <> UUID.toText (getPlayerId me)] $ replicateM_ (ps ^. #lives) $ toHtml ("❤️" :: String)
                             form_
                                 [ id_ $ "player-state-form-" <> UUID.toText (getPlayerId me)
@@ -254,10 +254,11 @@ guessInput v isMe isMyTurn invaldGuess playerId = do
   where
     isActivePlayersTurn = isMe && isMyTurn
 
-letterUI :: HashSet CaseInsensitiveChar -> Html ()
-letterUI ls = for_ [(CaseInsensitiveChar 'A') .. (CaseInsensitiveChar 'Z')] $ \l -> do
-    let weight = if l `HashSet.member` ls then "font-extrabold" else "font-extralight"
-    span_ [class_ $ "tracking-widest " <> weight] $ toHtml l
+letterUI :: PlayerState -> Html ()
+letterUI ps = for_ [(CaseInsensitiveChar 'A') .. (CaseInsensitiveChar 'Z')] $ \l -> do
+    let weight = if l `HashSet.member` (ps ^. #letters) then " font-extrabold" else " font-extralight"
+        color = if l `HashSet.member` (ps ^. #freeLetters) then " text-rose-600" else ""
+    span_ [class_ $ "tracking-widest" <> weight <> color] $ toHtml l
 
 playerFirst :: PlayerId -> CircularZipper PlayerState -> [PlayerState]
 playerFirst pId cz = CZ.current playerCurrent : CZ.rights playerCurrent <> CZ.lefts playerCurrent

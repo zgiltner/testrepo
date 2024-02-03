@@ -1,6 +1,6 @@
-module CaseInsensitive (CaseInsensitiveText (..), CaseInsensitiveChar (..), caseInsensitiveLetters, isInfixOf) where
+module CaseInsensitive (CaseInsensitiveText (..), CaseInsensitiveChar (..), caseInsensitiveLetters, length, isInfixOf) where
 
-import CustomPrelude
+import CustomPrelude hiding (length)
 
 import qualified Data.Char as C
 import Data.Coerce (coerce)
@@ -26,6 +26,9 @@ instance FromHttpApiData CaseInsensitiveText where
 
 isInfixOf :: CaseInsensitiveText -> CaseInsensitiveText -> Bool
 isInfixOf = coerce (T.isInfixOf `on` T.toCaseFold)
+
+length :: CaseInsensitiveText -> Int
+length = coerce T.length
 
 newtype CaseInsensitiveChar = CaseInsensitiveChar Char
     deriving stock (Show, Generic)

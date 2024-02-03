@@ -39,6 +39,8 @@ dependencies:
   - nonempty-zipper
   - optics-core
   - optics-th
+  - optics-extra
+  - optics-operators
   - rapid
   - random
   - rio
